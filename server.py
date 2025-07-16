@@ -1,5 +1,5 @@
-import eventlet
-eventlet.monkey_patch()
+import gevent.monkey
+gevent.monkey.patch_all()
 
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
@@ -86,7 +86,4 @@ def login():
         return jsonify({"message": "Неверные данные для входа!"}), 401
 
 if __name__ == '__main__':
-    # Используем eventlet для асинхронной работы с запросами
-    from flask_socketio import SocketIO
-    socketio = SocketIO(app, cors_allowed_origins="*")
-    socketio.run(app, host='0.0.0.0', port=10000)
+    app.run(debug=True)
