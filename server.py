@@ -36,6 +36,12 @@ def create_tables():
 def index():
     return "Сервер работает!"
 
+# Эндпоинт для генерации капчи
+@app.route('/generate_captcha', methods=['GET'])
+def generate_captcha():
+    captcha = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))  # Генерация капчи
+    return jsonify({'captcha': captcha})
+
 # Маршрут регистрации
 @app.route('/register', methods=['POST'])
 def register():
