@@ -33,6 +33,11 @@ def create_tables():
 def index():
     return "Сервер работает!"
 
+@app.route('/reg.html')
+def reg_html():
+    from flask import send_from_directory
+    return send_from_directory('.', 'reg.html')
+
 # Маршрут для получения капчи
 @app.route('/generate_captcha', methods=['GET'])
 def generate_captcha():
