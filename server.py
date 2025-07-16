@@ -83,6 +83,11 @@ def login():
     username = data.get('username')
     password = data.get('password')
 
+# Отдача страницы чата
+@app.route('/chat.html')
+def serve_chat():
+    return send_from_directory('static', 'chat.html')
+
     # Находим пользователя в базе данных
     user = User.query.filter_by(username=username).first()
 
