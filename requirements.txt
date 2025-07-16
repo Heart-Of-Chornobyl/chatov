@@ -1,8 +1,6 @@
 flask
 flask-socketio
-eventlet
+flask-sqlalchemy
+flask-bcrypt
+gevent  # Используем gevent вместо eventlet
 gunicorn
-flask_sqlalchemy
-flask_bcrypt
-flask_wtf
-wtforms
