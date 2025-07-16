@@ -131,19 +131,16 @@
     const captcha = document.getElementById('captcha-input').value.trim();
 
     try {
-      const response = await fetch('/register', {
+      const res = await fetch('/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ username, password, captcha })
       });
-      const data = await response.json();
+      const data = await res.json();
       document.getElementById('register-message').innerText = data.message;
-      if (response.ok) {
-        document.getElementById('reg-username').value = '';
-        document.getElementById('reg-password').value = '';
-        document.getElementById('captcha-input').value = '';
-        loadCaptcha();
+      if (res.ok) {
+        window.location.href = '/chat.html'; // Переход на чат
       }
     } catch {
       document.getElementById('register-message').innerText = 'Ошибка регистрации';
@@ -156,14 +153,17 @@
     const password = document.getElementById('login-password').value.trim();
 
     try {
-      const response = await fetch('/login', {
+      const res = await fetch('/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ username, password })
       });
-      const data = await response.json();
+      const data = await res.json();
       document.getElementById('login-message').innerText = data.message;
+      if (res.ok) {
+        window.location.href = '/chat.html'; // Переход на чат
+      }
     } catch {
       document.getElementById('login-message').innerText = 'Ошибка входа';
     }
