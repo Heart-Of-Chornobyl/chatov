@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Вход и регистрация с капчей</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 400px; margin: 20px auto; }
+    h2 { margin-bottom: 0; }
+    form { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; }
+    label { display: block; margin-top: 10px; }
+    input[type=text], input[type=password] { width: 100%; padding: 6px; box-sizing: border-box; }
+    button { margin-top: 15px; padding: 8px 12px; }
+    #captcha-text { font-weight: bold; font-size: 18px; letter-spacing: 3px; background: #eee; padding: 5px 10px; user-select: none; }
+    #message { margin-top: 10px; font-weight: bold; }
+    #tabs button { margin-right: 10px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+  <div id="tabs">
+    <button onclick="showForm('login')">Вход</button>
+    <button onclick="showForm('register')">Регистрация</button>
+  </div>
+
+  <form id="login-form">
+    <h2>Вход</h2>
+    <label>Имя пользователя:<input type="text" id="login-username" required></label>
+    <label>Пароль:<input type="password" id="login-password" required></label>
+    <button type="submit">Войти</button>
+    <div id="login-message"></div>
+  </form>
+
+  <form id="register-form" class="hidden">
+    <h2>Регистрация</h2>
+    <label>Имя пользователя:<input type="text" id="reg-username" required></label>
+    <label>Пароль:<input type="password" id="reg-password" required></label>
+
+    <div>
+      <div>Капча: <span id="captcha-text"></span> <button type="button" onclick="loadCaptcha()">Обновить</button></div>
+      <label>Введите капчу:<input type="text" id="captcha-input" required></label>
+    </div>
+
+    <button type="submit">Зарегистрироваться</button>
+    <div id="register-message"></div>
+  </form>
+
+<script>
+  function showForm(form) {
+    document.getElementById('login-form').classList.toggle('hidden', form !== 'login');
+    document.getElementById('register-form').classList.toggle('hidden', form !== 'register');
+  }
+
+  async function loadCaptcha() {
+    try {
+      const res = await fetch('/generate_captcha', { credentials: 'include' }); // отправляем куки!
+      const data = await res.json();
+      document.getElementById('captcha-text').innerText = data.captcha;
+      document.getElementById('captcha-input').value = '';
+      document.getElementById('register-message').innerText = '';
+    } catch {
+      document.getElementById('register-message').innerText = 'Ошибка загрузки капчи';
+    }
+  }
+
+  document.getElementById('register-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('reg-username').value.trim();
+    const password = document.getElementById('reg-password').value.trim();
+    const captcha = document.getElementById('captcha-input').value.trim();
+
+    const res = await fetch('/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // отправляем куки!
+      body: JSON.stringify({ username, password, captcha })
+    });
+    const data = await res.json();
+    document.getElementById('register-message').innerText = data.message;
+
+    if (res.ok) {
+      document.getElementById('reg-username').value = '';
+      document.getElementById('reg-password').value = '';
+      document.getElementById('captcha-input').value = '';
+      loadCaptcha();
+    }
+  });
+
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value.trim();
+
+    const res = await fetch('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+      credentials: 'include'
+    });
+    const data = await res.json();
+    document.getElementById('login-message').innerText = data.message;
+  });
+
+  // Загружаем капчу при старте страницы
+  loadCaptcha();
+</script>
+
+</body>
+</html>
