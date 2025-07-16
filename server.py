@@ -2,7 +2,6 @@ import eventlet
 eventlet.monkey_patch()
 
 from flask import Flask, request, jsonify
-from flask_socketio import SocketIO, send
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 import random
@@ -17,7 +16,6 @@ app.config['SECRET_KEY'] = 'secret!'  # Используем секретный 
 # Инициализация базы данных и bcrypt
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Модель пользователя
 class User(db.Model):
@@ -31,16 +29,16 @@ def create_tables():
     with app.app_context():
         db.create_all()  # Создаём таблицы в контексте приложения
 
-# Маршрут главной страницы
-@app.route('/')
-def index():
-    return "Сервер работает!"
-
 # Эндпоинт для генерации капчи
 @app.route('/generate_captcha', methods=['GET'])
 def generate_captcha():
     captcha = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))  # Генерация капчи
     return jsonify({'captcha': captcha})
+
+# Маршрут главной страницы
+@app.route('/')
+def index():
+    return "Сервер работает!"
 
 # Маршрут регистрации
 @app.route('/register', methods=['POST'])
@@ -87,10 +85,8 @@ def login():
     else:
         return jsonify({"message": "Неверные данные для входа!"}), 401
 
-# WebSocket для чата
-@socketio.on('message')
-def handle_message(msg):
-    send(msg, broadcast=True)
-
 if __name__ == '__main__':
+    # Используем eventlet для асинхронной работы с запросами
+    from flask_socketio import SocketIO
+    socketio = SocketIO(app, cors_allowed_origins="*")
     socketio.run(app, host='0.0.0.0', port=10000)
