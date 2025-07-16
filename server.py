@@ -29,9 +29,10 @@ class User(db.Model):
     password = db.Column(db.String(100), nullable=False)
 
 # Инициализация базы данных
-@app.before_request
+@app.before_first_request
 def create_tables():
-    db.create_all()
+    with app.app_context():
+        db.create_all()  # Создаём таблицы в контексте приложения
 
 # Форма для регистрации с капчей
 class RegistrationForm(FlaskForm):
