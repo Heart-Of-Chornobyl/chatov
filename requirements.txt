@@ -2,3 +2,7 @@ flask
 flask-socketio
 eventlet
 gunicorn
+flask_sqlalchemy
+flask_bcrypt
+flask_wtf
+wtforms
