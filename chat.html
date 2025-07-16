@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Чат</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 20px auto;
+      display: flex;
+      flex-direction: column;
+      height: 90vh;
+    }
+    #chat-container {
+      flex: 1;
+      border: 1px solid #ccc;
+      padding: 10px;
+      overflow-y: auto;
+      background: #f9f9f9;
+    }
+    #message-form {
+      margin-top: 10px;
+      display: flex;
+    }
+    #message-input {
+      flex: 1;
+      padding: 8px;
+      font-size: 16px;
+    }
+    #send-btn {
+      padding: 8px 16px;
+      margin-left: 10px;
+    }
+    .message {
+      margin-bottom: 10px;
+      padding: 5px 8px;
+      border-radius: 5px;
+    }
+    .message .username {
+      font-weight: bold;
+      cursor: pointer;
+      color: blue;
+    }
+    .message.private {
+      background-color: #ffe4e1;
+      border: 1px solid #ff8888;
+    }
+    .message.public {
+      background-color: #e0f7ff;
+      border: 1px solid #88ccff;
+    }
+    .reply-btn {
+      margin-left: 10px;
+      cursor: pointer;
+      font-size: 12px;
+      color: #555;
+      border: none;
+      background: none;
+    }
+    #chat-header {
+      margin-bottom: 10px;
+    }
+    #chat-header button {
+      margin-right: 10px;
+      padding: 6px 10px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="chat-header">
+  <button onclick="switchChat('public')">Общий чат</button>
+  <span id="private-chat-label" style="display:none;">Личный чат с <span id="private-username"></span> <button onclick="closePrivateChat()">Закрыть</button></span>
+</div>
+
+<div id="chat-container"></div>
+
+<form id="message-form">
+  <input id="message-input" autocomplete="off" placeholder="Введите сообщение..." />
+  <button id="send-btn" type="submit">Отправить</button>
+</form>
+
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+  // Заменить на свой ник после логина, например, передавать из сервера или ввести вручную
+  const currentUser = prompt("Введите ваш ник для чата", "user" + Math.floor(Math.random()*1000));
+
+  const socket = io({ transports: ['websocket'] });
+
+  let chatMode = 'public'; // public или private
+  let privateUser = null; // ник пользователя для личного чата
+
+  const chatContainer = document.getElementById('chat-container');
+  const messageForm = document.getElementById('message-form');
+  const messageInput = document.getElementById('message-input');
+  const privateChatLabel = document.getElementById('private-chat-label');
+  const privateUsernameSpan = document.getElementById('private-username');
+
+  // Отрисовка сообщения в чат
+  function addMessage(username, text, isPrivate, fromSelf) {
+    const div = document.createElement('div');
+    div.classList.add('message');
+    div.classList.add(isPrivate ? 'private' : 'public');
+
+    // Ник с кликом для личного сообщения
+    const userSpan = document.createElement('span');
+    userSpan.classList.add('username');
+    userSpan.textContent = username;
+    userSpan.title = 'Нажмите, чтобы отправить личное сообщение';
+    userSpan.onclick = () => openPrivateChat(username);
+
+    // Кнопка "Ответить" рядом с ником (добавляет @ник, в поле ввода)
+    const replyBtn = document.createElement('button');
+    replyBtn.textContent = 'Ответить';
+    replyBtn.classList.add('reply-btn');
+    replyBtn.onclick = () => {
+      messageInput.value = `@${username}, `;
+      messageInput.focus();
+    };
+
+    div.appendChild(userSpan);
+    div.appendChild(replyBtn);
+
+    const msgText = document.createElement('span');
+    msgText.textContent = ': ' + text;
+    div.appendChild(msgText);
+
+    // Если сообщение личное и не для этого пользователя — не показываем
+    if (isPrivate) {
+      if (username !== currentUser && !fromSelf) return; // не твой и не для тебя
+      // Личное сообщение показываем, если ты отправитель или получатель
+      // Но тут простая логика: если в сообщении есть @ник, который совпадает с privateUser, показываем
+      if (chatMode === 'private' && privateUser !== username && privateUser !== currentUser) return;
+    }
+
+    chatContainer.appendChild(div);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
+  // Переключить чат public/private
+  function switchChat(mode) {
+    chatMode = mode;
+    if (mode === 'public') {
+      privateUser = null;
+      privateChatLabel.style.display = 'none';
+    }
+    chatContainer.innerHTML = ''; // очистить чат
+  }
+
+  // Открыть личный чат с пользователем
+  function openPrivateChat(username) {
+    if (username === currentUser) return; // нельзя с самим собой
+    chatMode = 'private';
+    privateUser = username;
+    privateChatLabel.style.display = 'inline';
+    privateUsernameSpan.textContent = username;
+    chatContainer.innerHTML = '';
+  }
+
+  // Закрыть личный чат — вернуться в общий
+  function closePrivateChat() {
+    switchChat('public');
+  }
+
+  // Отправка сообщения
+  messageForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    let msg = messageInput.value.trim();
+    if (!msg) return;
+
+    // Если в личном чате, то добавляем @ник в начало, если нет
+    if (chatMode === 'private' && !msg.startsWith(`@${privateUser},`)) {
+      msg = `@${privateUser}, ` + msg;
+    }
+
+    socket.emit('message', { user: currentUser, text: msg });
+    messageInput.value = '';
+  });
+
+  // Принимаем сообщение от сервера
+  socket.on('message', (data) => {
+    const { user, text } = data;
+    const isPrivate = text.startsWith(`@${currentUser},`) || (chatMode === 'private' && privateUser === user);
+
+    // Показываем сообщение в зависимости от чата
+    if (chatMode === 'public' && !text.startsWith('@')) {
+      addMessage(user, text, false, user === currentUser);
+    } else if (chatMode === 'private' && isPrivate) {
+      addMessage(user, text.replace(`@${currentUser},`, '').trim(), true, user === currentUser);
+    } else if (chatMode === 'public' && isPrivate) {
+      // В общем чате личные сообщения не показываем
+    }
+  });
+
+  // Автоматически подключаемся и показываем приветствие
+  addMessage('Система', `Вы вошли как: ${currentUser}`, false, true);
+</script>
+
+</body>
+</html>
