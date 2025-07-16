@@ -1,6 +1,3 @@
-import eventlet
-eventlet.monkey_patch()
-
 from flask import Flask, request, jsonify, session
 from flask_socketio import SocketIO, send
 from flask_sqlalchemy import SQLAlchemy
@@ -17,7 +14,7 @@ app.config['SECRET_KEY'] = 'secret!'  # Используем секретный 
 # Инициализация базы данных и bcrypt
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", engineio_logger=True)
 
 # Модель пользователя
 class User(db.Model):
