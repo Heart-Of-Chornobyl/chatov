@@ -4,3 +4,4 @@ flask-sqlalchemy
 flask-bcrypt
 gevent  # Используем gevent вместо eventlet
 gunicorn
+flask-cors
