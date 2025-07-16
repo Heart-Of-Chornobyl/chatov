@@ -4,20 +4,19 @@ from flask_cors import CORS
 import random
 import string
 import sqlite3
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__, static_url_path='', static_folder='.')
 app.secret_key = 'секретный_ключ'
 CORS(app, supports_credentials=True)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-DATABASE = 'chat.db'  # Файл базы SQLite
-
-# --- Работа с базой ---
+DATABASE = 'chat.db'
 
 def get_db():
     if 'db' not in g:
         g.db = sqlite3.connect(DATABASE)
-        g.db.row_factory = sqlite3.Row  # Для удобного доступа по имени колонок
+        g.db.row_factory = sqlite3.Row
     return g.db
 
 @app.teardown_appcontext
@@ -28,7 +27,6 @@ def close_db(exc):
 
 def init_db():
     db = get_db()
-    # Создаём таблицу пользователей, если нет
     db.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,7 +34,6 @@ def init_db():
             password TEXT NOT NULL
         )
     ''')
-    # Создаём таблицу сообщений, если нет
     db.execute('''
         CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,15 +43,11 @@ def init_db():
     ''')
     db.commit()
 
-# --- Капча ---
-
 @app.route('/generate_captcha')
 def generate_captcha():
     captcha = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
     session['captcha'] = captcha
     return jsonify({'captcha': captcha})
-
-# --- Регистрация ---
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -72,12 +65,11 @@ def register():
     if cursor.fetchone() is not None:
         return jsonify({'message': 'Пользователь уже существует'}), 400
 
-    db.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, password))
+    hashed_password = generate_password_hash(password)
+    db.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, hashed_password))
     db.commit()
     session['username'] = username
     return jsonify({'message': 'Регистрация успешна'})
-
-# --- Вход ---
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -88,13 +80,11 @@ def login():
     db = get_db()
     cursor = db.execute('SELECT password FROM users WHERE username = ?', (username,))
     row = cursor.fetchone()
-    if row is None or row['password'] != password:
+    if row is None or not check_password_hash(row['password'], password):
         return jsonify({'message': 'Неверные данные'}), 400
 
     session['username'] = username
     return jsonify({'message': 'Вход выполнен'})
-
-# --- Страницы ---
 
 @app.route('/')
 def root():
@@ -104,12 +94,10 @@ def root():
 def chat_page():
     return send_from_directory('.', 'chat.html')
 
-# --- Чат через Socket.IO ---
-
 @socketio.on('connect')
 def handle_connect():
     if 'username' not in session:
-        return False  # отклонить соединение если не авторизован
+        return False
     db = get_db()
     cursor = db.execute('SELECT username, text FROM messages ORDER BY id')
     messages = [{'user': row['username'], 'text': row['text']} for row in cursor.fetchall()]
@@ -126,19 +114,15 @@ def handle_send(data):
     db.execute('INSERT INTO messages (username, text) VALUES (?, ?)', (username, text))
     db.commit()
 
-    # Ограничиваем 100 последних сообщений
     cursor = db.execute('SELECT COUNT(*) FROM messages')
     count = cursor.fetchone()[0]
     if count > 100:
-        # Удалим самые старые
         to_delete = count - 100
         db.execute('DELETE FROM messages WHERE id IN (SELECT id FROM messages ORDER BY id LIMIT ?)', (to_delete,))
         db.commit()
 
     message = {'user': username, 'text': text}
     emit('new_message', message, broadcast=True)
-
-# --- Запуск и инициализация БД ---
 
 if __name__ == '__main__':
     with app.app_context():
