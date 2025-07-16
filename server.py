@@ -2,16 +2,14 @@ from flask import Flask
 from flask_socketio import SocketIO, send
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 @app.route('/')
 def index():
-    return "Сервер чата работает!"
+    return "Сервер работает!"
 
 @socketio.on('message')
 def handle_message(msg):
-    print(f"Получено сообщение: {msg}")
     send(msg, broadcast=True)
 
 if __name__ == '__main__':
