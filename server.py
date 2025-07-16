@@ -1,7 +1,8 @@
-import gevent.monkey
-gevent.monkey.patch_all()
+import eventlet
+eventlet.monkey_patch()
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, session
+from flask_socketio import SocketIO, send
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 import random
@@ -16,6 +17,7 @@ app.config['SECRET_KEY'] = 'secret!'  # Используем секретный 
 # Инициализация базы данных и bcrypt
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Модель пользователя
 class User(db.Model):
@@ -29,16 +31,20 @@ def create_tables():
     with app.app_context():
         db.create_all()  # Создаём таблицы в контексте приложения
 
-# Эндпоинт для генерации капчи
-@app.route('/generate_captcha', methods=['GET'])
-def generate_captcha():
-    captcha = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))  # Генерация капчи
-    return jsonify({'captcha': captcha})
-
 # Маршрут главной страницы
 @app.route('/')
 def index():
     return "Сервер работает!"
+
+# Маршрут для получения капчи
+@app.route('/generate_captcha', methods=['GET'])
+def generate_captcha():
+    # Генерация случайной капчи
+    captcha = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+
+    # Сохраняем капчу для проверки при регистрации
+    session['captcha'] = captcha
+    return jsonify({'captcha': captcha})
 
 # Маршрут регистрации
 @app.route('/register', methods=['POST'])
@@ -49,9 +55,8 @@ def register():
     password = data.get('password')
     captcha_input = data.get('captcha')
 
-    # Генерация капчи для проверки
-    captcha_answer = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-
+    # Проверяем капчу
+    captcha_answer = session.get('captcha', '')
     if captcha_input != captcha_answer:
         return jsonify({"message": "Неверная капча!"}), 400
 
@@ -85,5 +90,10 @@ def login():
     else:
         return jsonify({"message": "Неверные данные для входа!"}), 401
 
+# WebSocket для чата
+@socketio.on('message')
+def handle_message(msg):
+    send(msg, broadcast=True)
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    socketio.run(app, host='0.0.0.0', port=10000)
