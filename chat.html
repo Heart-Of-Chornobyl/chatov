@@ -1,200 +1,131 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <title>Чат</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 600px;
-      margin: 20px auto;
-      display: flex;
-      flex-direction: column;
-      height: 90vh;
-    }
-    #chat-container {
-      flex: 1;
-      border: 1px solid #ccc;
-      padding: 10px;
-      overflow-y: auto;
-      background: #f9f9f9;
-    }
-    #message-form {
-      margin-top: 10px;
-      display: flex;
-    }
-    #message-input {
-      flex: 1;
-      padding: 8px;
-      font-size: 16px;
-    }
-    #send-btn {
-      padding: 8px 16px;
-      margin-left: 10px;
-    }
-    .message {
-      margin-bottom: 10px;
-      padding: 5px 8px;
-      border-radius: 5px;
-    }
-    .message .username {
-      font-weight: bold;
-      cursor: pointer;
-      color: blue;
-    }
-    .message.private {
-      background-color: #ffe4e1;
-      border: 1px solid #ff8888;
-    }
-    .message.public {
-      background-color: #e0f7ff;
-      border: 1px solid #88ccff;
-    }
-    .reply-btn {
-      margin-left: 10px;
-      cursor: pointer;
-      font-size: 12px;
-      color: #555;
-      border: none;
-      background: none;
-    }
-    #chat-header {
-      margin-bottom: 10px;
-    }
-    #chat-header button {
-      margin-right: 10px;
-      padding: 6px 10px;
-    }
-  </style>
+<meta charset="UTF-8" />
+<title>Чат</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    max-width: 600px;
+    margin: 20px auto;
+  }
+  #messages {
+    border: 1px solid #ccc;
+    height: 400px;
+    overflow-y: scroll;
+    padding: 10px;
+    margin-bottom: 10px;
+    background: #f9f9f9;
+  }
+  .message {
+    margin-bottom: 8px;
+  }
+  .username {
+    font-weight: bold;
+    color: #0066cc;
+    cursor: pointer;
+  }
+  .reply-btn {
+    margin-left: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    color: #007700;
+  }
+  #input-area {
+    display: flex;
+  }
+  #input-area input[type="text"] {
+    flex-grow: 1;
+    padding: 8px;
+    font-size: 16px;
+  }
+  #input-area button {
+    padding: 8px 16px;
+    font-size: 16px;
+    margin-left: 4px;
+  }
+</style>
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
 <body>
 
-<div id="chat-header">
-  <button onclick="switchChat('public')">Общий чат</button>
-  <span id="private-chat-label" style="display:none;">Личный чат с <span id="private-username"></span> <button onclick="closePrivateChat()">Закрыть</button></span>
+<h2>Чат</h2>
+<div id="messages"></div>
+
+<div id="input-area">
+  <input type="text" id="msg-input" placeholder="Введите сообщение..." autocomplete="off" />
+  <button id="send-btn">Отправить</button>
 </div>
 
-<div id="chat-container"></div>
-
-<form id="message-form">
-  <input id="message-input" autocomplete="off" placeholder="Введите сообщение..." />
-  <button id="send-btn" type="submit">Отправить</button>
-</form>
-
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
-  // Заменить на свой ник после логина, например, передавать из сервера или ввести вручную
-  const currentUser = prompt("Введите ваш ник для чата", "user" + Math.floor(Math.random()*1000));
+  const socket = io();
 
-  const socket = io({ transports: ['websocket'] });
+  const messagesDiv = document.getElementById('messages');
+  const input = document.getElementById('msg-input');
+  const sendBtn = document.getElementById('send-btn');
 
-  let chatMode = 'public'; // public или private
-  let privateUser = null; // ник пользователя для личного чата
-
-  const chatContainer = document.getElementById('chat-container');
-  const messageForm = document.getElementById('message-form');
-  const messageInput = document.getElementById('message-input');
-  const privateChatLabel = document.getElementById('private-chat-label');
-  const privateUsernameSpan = document.getElementById('private-username');
-
-  // Отрисовка сообщения в чат
-  function addMessage(username, text, isPrivate, fromSelf) {
+  // Добавить сообщение в окно
+  function addMessage(msg) {
     const div = document.createElement('div');
-    div.classList.add('message');
-    div.classList.add(isPrivate ? 'private' : 'public');
+    div.className = 'message';
 
-    // Ник с кликом для личного сообщения
-    const userSpan = document.createElement('span');
-    userSpan.classList.add('username');
-    userSpan.textContent = username;
-    userSpan.title = 'Нажмите, чтобы отправить личное сообщение';
-    userSpan.onclick = () => openPrivateChat(username);
+    // Ник с кликабельной кнопкой "Ответить"
+    const usernameSpan = document.createElement('span');
+    usernameSpan.textContent = msg.user;
+    usernameSpan.className = 'username';
+    usernameSpan.title = 'Нажмите, чтобы ответить';
 
-    // Кнопка "Ответить" рядом с ником (добавляет @ник, в поле ввода)
-    const replyBtn = document.createElement('button');
-    replyBtn.textContent = 'Ответить';
-    replyBtn.classList.add('reply-btn');
-    replyBtn.onclick = () => {
-      messageInput.value = `@${username}, `;
-      messageInput.focus();
-    };
+    // Кнопка "Ответить"
+    const replyBtn = document.createElement('span');
+    replyBtn.textContent = '[Ответить]';
+    replyBtn.className = 'reply-btn';
 
-    div.appendChild(userSpan);
+    // При клике на ник или кнопку "Ответить" подставляем @ник,
+    function onReplyClick() {
+      input.value = '@' + msg.user + ', ';
+      input.focus();
+    }
+    usernameSpan.addEventListener('click', onReplyClick);
+    replyBtn.addEventListener('click', onReplyClick);
+
+    div.appendChild(usernameSpan);
     div.appendChild(replyBtn);
 
-    const msgText = document.createElement('span');
-    msgText.textContent = ': ' + text;
-    div.appendChild(msgText);
+    // Текст сообщения
+    const textSpan = document.createElement('span');
+    textSpan.textContent = ': ' + msg.text;
+    div.appendChild(textSpan);
 
-    // Если сообщение личное и не для этого пользователя — не показываем
-    if (isPrivate) {
-      if (username !== currentUser && !fromSelf) return; // не твой и не для тебя
-      // Личное сообщение показываем, если ты отправитель или получатель
-      // Но тут простая логика: если в сообщении есть @ник, который совпадает с privateUser, показываем
-      if (chatMode === 'private' && privateUser !== username && privateUser !== currentUser) return;
-    }
-
-    chatContainer.appendChild(div);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
+    messagesDiv.appendChild(div);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
   }
 
-  // Переключить чат public/private
-  function switchChat(mode) {
-    chatMode = mode;
-    if (mode === 'public') {
-      privateUser = null;
-      privateChatLabel.style.display = 'none';
-    }
-    chatContainer.innerHTML = ''; // очистить чат
-  }
+  // Загрузка старых сообщений
+  socket.on('load_messages', msgs => {
+    messagesDiv.innerHTML = '';
+    msgs.forEach(addMessage);
+  });
 
-  // Открыть личный чат с пользователем
-  function openPrivateChat(username) {
-    if (username === currentUser) return; // нельзя с самим собой
-    chatMode = 'private';
-    privateUser = username;
-    privateChatLabel.style.display = 'inline';
-    privateUsernameSpan.textContent = username;
-    chatContainer.innerHTML = '';
-  }
-
-  // Закрыть личный чат — вернуться в общий
-  function closePrivateChat() {
-    switchChat('public');
-  }
+  // Новое сообщение
+  socket.on('new_message', addMessage);
 
   // Отправка сообщения
-  messageForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    let msg = messageInput.value.trim();
-    if (!msg) return;
-
-    // Если в личном чате, то добавляем @ник в начало, если нет
-    if (chatMode === 'private' && !msg.startsWith(`@${privateUser},`)) {
-      msg = `@${privateUser}, ` + msg;
-    }
-
-    socket.emit('message', { user: currentUser, text: msg });
-    messageInput.value = '';
+  sendBtn.addEventListener('click', () => {
+    const text = input.value.trim();
+    if (!text) return;
+    socket.emit('send_message', { text });
+    input.value = '';
   });
 
-  // Принимаем сообщение от сервера
-  socket.on('message', (data) => {
-    const { user, text } = data;
-    const isPrivate = text.startsWith(`@${currentUser},`) || (chatMode === 'private' && privateUser === user);
-
-    // Показываем сообщение в зависимости от чата
-    if (chatMode === 'public' && !text.startsWith('@')) {
-      addMessage(user, text, false, user === currentUser);
-    } else if (chatMode === 'private' && isPrivate) {
-      addMessage(user, text.replace(`@${currentUser},`, '').trim(), true, user === currentUser);
-    } else if (chatMode === 'public' && isPrivate) {
-      // В общем чате личные сообщения не показываем
+  // Enter для отправки
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      sendBtn.click();
+      e.preventDefault();
     }
   });
 
-  // Автоматически подключаемся и показываем приветствие
-  addMessage('Система', `Вы вошли как: ${currentUser}`, false, true);
+  // При подключении сервер сам отправит load_messages
 </script>
 
 </body>
