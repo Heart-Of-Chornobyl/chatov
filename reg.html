@@ -53,13 +53,14 @@
 
   async function loadCaptcha() {
     try {
-      const res = await fetch('/generate_captcha', { credentials: 'include' }); // отправляем куки!
+      const res = await fetch('/generate_captcha', { credentials: 'include' });
+      if (!res.ok) throw new Error('Ошибка загрузки капчи');
       const data = await res.json();
       document.getElementById('captcha-text').innerText = data.captcha;
       document.getElementById('captcha-input').value = '';
       document.getElementById('register-message').innerText = '';
-    } catch {
-      document.getElementById('register-message').innerText = 'Ошибка загрузки капчи';
+    } catch (e) {
+      document.getElementById('register-message').innerText = e.message;
     }
   }
 
@@ -69,20 +70,24 @@
     const password = document.getElementById('reg-password').value.trim();
     const captcha = document.getElementById('captcha-input').value.trim();
 
-    const res = await fetch('/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', // отправляем куки!
-      body: JSON.stringify({ username, password, captcha })
-    });
-    const data = await res.json();
-    document.getElementById('register-message').innerText = data.message;
+    try {
+      const res = await fetch('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username, password, captcha })
+      });
+      const data = await res.json();
+      document.getElementById('register-message').innerText = data.message;
 
-    if (res.ok) {
-      document.getElementById('reg-username').value = '';
-      document.getElementById('reg-password').value = '';
-      document.getElementById('captcha-input').value = '';
-      loadCaptcha();
+      if (res.ok) {
+        document.getElementById('reg-username').value = '';
+        document.getElementById('reg-password').value = '';
+        document.getElementById('captcha-input').value = '';
+        loadCaptcha();
+      }
+    } catch {
+      document.getElementById('register-message').innerText = 'Ошибка запроса регистрации';
     }
   });
 
@@ -91,17 +96,21 @@
     const username = document.getElementById('login-username').value.trim();
     const password = document.getElementById('login-password').value.trim();
 
-    const res = await fetch('/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-      credentials: 'include'
-    });
-    const data = await res.json();
-    document.getElementById('login-message').innerText = data.message;
+    try {
+      const res = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      document.getElementById('login-message').innerText = data.message;
+    } catch {
+      document.getElementById('login-message').innerText = 'Ошибка запроса входа';
+    }
   });
 
-  // Загружаем капчу при старте страницы
+  // Загрузить капчу при загрузке страницы
   loadCaptcha();
 </script>
 
