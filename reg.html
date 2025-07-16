@@ -2,115 +2,166 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Вход и регистрация с капчей</title>
+  <title>Регистрация и Вход с капчей</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 400px; margin: 20px auto; }
-    h2 { margin-bottom: 0; }
-    form { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; }
-    label { display: block; margin-top: 10px; }
-    input[type=text], input[type=password] { width: 100%; padding: 6px; box-sizing: border-box; }
-    button { margin-top: 15px; padding: 8px 12px; }
-    #captcha-text { font-weight: bold; font-size: 18px; letter-spacing: 3px; background: #eee; padding: 5px 10px; user-select: none; }
-    #message { margin-top: 10px; font-weight: bold; }
-    #tabs button { margin-right: 10px; }
-    .hidden { display: none; }
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 400px;
+      margin: 30px auto;
+    }
+    form {
+      border: 1px solid #ccc;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+    }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 15px;
+    }
+    #captcha-box {
+      margin-top: 15px;
+      font-weight: bold;
+      font-size: 24px;
+      letter-spacing: 5px;
+      background-color: #eee;
+      padding: 10px;
+      user-select: none;
+      display: inline-block;
+    }
+    .hidden {
+      display: none;
+    }
+    #tabs button {
+      margin-right: 10px;
+      padding: 8px 12px;
+    }
+    #message {
+      margin-top: 10px;
+      font-weight: bold;
+      color: red;
+    }
   </style>
 </head>
 <body>
 
-  <div id="tabs">
-    <button onclick="showForm('login')">Вход</button>
-    <button onclick="showForm('register')">Регистрация</button>
+<div id="tabs">
+  <button onclick="showForm('login')">Вход</button>
+  <button onclick="showForm('register')">Регистрация</button>
+</div>
+
+<form id="login-form">
+  <h2>Вход</h2>
+  <label>Имя пользователя:
+    <input type="text" id="login-username" required />
+  </label>
+  <label>Пароль:
+    <input type="password" id="login-password" required />
+  </label>
+  <button type="submit">Войти</button>
+  <div id="login-message"></div>
+</form>
+
+<form id="register-form" class="hidden">
+  <h2>Регистрация</h2>
+  <label>Имя пользователя:
+    <input type="text" id="reg-username" required />
+  </label>
+  <label>Пароль:
+    <input type="password" id="reg-password" required />
+  </label>
+
+  <div style="margin-top: 20px;">
+    <div>Капча: <span id="captcha-box"></span> <button type="button" onclick="loadCaptcha()">Обновить</button></div>
+    <label>Введите капчу:
+      <input type="text" id="captcha-input" required autocomplete="off" />
+    </label>
   </div>
 
-  <form id="login-form">
-    <h2>Вход</h2>
-    <label>Имя пользователя:<input type="text" id="login-username" required></label>
-    <label>Пароль:<input type="password" id="login-password" required></label>
-    <button type="submit">Войти</button>
-    <div id="login-message"></div>
-  </form>
-
-  <form id="register-form" class="hidden">
-    <h2>Регистрация</h2>
-    <label>Имя пользователя:<input type="text" id="reg-username" required></label>
-    <label>Пароль:<input type="password" id="reg-password" required></label>
-
-    <div>
-      <div>Капча: <span id="captcha-text"></span> <button type="button" onclick="loadCaptcha()">Обновить</button></div>
-      <label>Введите капчу:<input type="text" id="captcha-input" required></label>
-    </div>
-
-    <button type="submit">Зарегистрироваться</button>
-    <div id="register-message"></div>
-  </form>
+  <button type="submit">Зарегистрироваться</button>
+  <div id="register-message"></div>
+</form>
 
 <script>
   function showForm(form) {
     document.getElementById('login-form').classList.toggle('hidden', form !== 'login');
     document.getElementById('register-form').classList.toggle('hidden', form !== 'register');
+    clearMessages();
+  }
+
+  function clearMessages() {
+    document.getElementById('login-message').innerText = '';
+    document.getElementById('register-message').innerText = '';
   }
 
   async function loadCaptcha() {
     try {
-      const res = await fetch('/generate_captcha', { credentials: 'include' });
-      if (!res.ok) throw new Error('Ошибка загрузки капчи');
-      const data = await res.json();
-      document.getElementById('captcha-text').innerText = data.captcha;
+      const response = await fetch('/generate_captcha', { credentials: 'include' });
+      if (!response.ok) throw new Error('Ошибка загрузки капчи');
+      const data = await response.json();
+      document.getElementById('captcha-box').innerText = data.captcha;
       document.getElementById('captcha-input').value = '';
       document.getElementById('register-message').innerText = '';
-    } catch (e) {
-      document.getElementById('register-message').innerText = e.message;
+    } catch (err) {
+      document.getElementById('register-message').innerText = err.message;
     }
   }
 
-  document.getElementById('register-form').addEventListener('submit', async (e) => {
+  document.getElementById('register-form').addEventListener('submit', async e => {
     e.preventDefault();
     const username = document.getElementById('reg-username').value.trim();
     const password = document.getElementById('reg-password').value.trim();
     const captcha = document.getElementById('captcha-input').value.trim();
 
     try {
-      const res = await fetch('/register', {
+      const response = await fetch('/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ username, password, captcha })
       });
-      const data = await res.json();
+      const data = await response.json();
       document.getElementById('register-message').innerText = data.message;
-
-      if (res.ok) {
+      if (response.ok) {
         document.getElementById('reg-username').value = '';
         document.getElementById('reg-password').value = '';
         document.getElementById('captcha-input').value = '';
         loadCaptcha();
       }
     } catch {
-      document.getElementById('register-message').innerText = 'Ошибка запроса регистрации';
+      document.getElementById('register-message').innerText = 'Ошибка регистрации';
     }
   });
 
-  document.getElementById('login-form').addEventListener('submit', async (e) => {
+  document.getElementById('login-form').addEventListener('submit', async e => {
     e.preventDefault();
     const username = document.getElementById('login-username').value.trim();
     const password = document.getElementById('login-password').value.trim();
 
     try {
-      const res = await fetch('/login', {
+      const response = await fetch('/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ username, password })
       });
-      const data = await res.json();
+      const data = await response.json();
       document.getElementById('login-message').innerText = data.message;
     } catch {
-      document.getElementById('login-message').innerText = 'Ошибка запроса входа';
+      document.getElementById('login-message').innerText = 'Ошибка входа';
     }
   });
 
-  // Загрузить капчу при загрузке страницы
+  // Загрузка капчи при загрузке страницы
   loadCaptcha();
 </script>
 
