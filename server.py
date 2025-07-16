@@ -5,9 +5,6 @@ from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, send
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
-from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField
-from wtforms.validators import DataRequired, Length
 import random
 import string
 
@@ -34,14 +31,7 @@ def create_tables():
     with app.app_context():
         db.create_all()  # Создаём таблицы в контексте приложения
 
-# Форма для регистрации с капчей
-class RegistrationForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired(), Length(min=4, max=20)])
-    password = PasswordField('Password', validators=[DataRequired(), Length(min=6)])
-    captcha = StringField('Enter the text: ' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=6)), 
-                          validators=[DataRequired()])
-    submit = SubmitField('Register')
-
+# Маршрут главной страницы
 @app.route('/')
 def index():
     return "Сервер работает!"
@@ -49,36 +39,36 @@ def index():
 # Маршрут регистрации
 @app.route('/register', methods=['POST'])
 def register():
-    form = RegistrationForm()
-    if form.validate_on_submit():
-        username = form.username.data
-        password = form.password.data
-        captcha_input = form.captcha.data
+    data = request.get_json()  # Получаем данные как JSON
 
-        # Генерация капчи для проверки
-        captcha_answer = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-        if captcha_input != captcha_answer:
-            return jsonify({"message": "Неверная капча!"}), 400
+    username = data.get('username')
+    password = data.get('password')
+    captcha_input = data.get('captcha')
 
-        # Проверяем, существует ли уже пользователь
-        if User.query.filter_by(username=username).first():
-            return jsonify({"message": "Пользователь с таким именем уже существует!"}), 400
+    # Генерация капчи для проверки
+    captcha_answer = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
-        # Хешируем пароль
-        hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+    if captcha_input != captcha_answer:
+        return jsonify({"message": "Неверная капча!"}), 400
 
-        # Добавляем нового пользователя в базу данных
-        new_user = User(username=username, password=hashed_password)
-        db.session.add(new_user)
-        db.session.commit()
+    # Проверяем, существует ли уже пользователь
+    if User.query.filter_by(username=username).first():
+        return jsonify({"message": "Пользователь с таким именем уже существует!"}), 400
 
-        return jsonify({"message": "Регистрация успешна!"}), 201
-    return jsonify({"message": "Ошибка в данных формы!"}), 400
+    # Хешируем пароль
+    hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+
+    # Добавляем нового пользователя в базу данных
+    new_user = User(username=username, password=hashed_password)
+    db.session.add(new_user)
+    db.session.commit()
+
+    return jsonify({"message": "Регистрация успешна!"}), 201
 
 # Маршрут для входа
 @app.route('/login', methods=['POST'])
 def login():
-    data = request.get_json()
+    data = request.get_json()  # Получаем данные как JSON
     username = data.get('username')
     password = data.get('password')
 
