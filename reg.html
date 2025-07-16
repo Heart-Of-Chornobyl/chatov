@@ -92,16 +92,24 @@
 </form>
 
 <script>
-  function showForm(form) {
-    document.getElementById('login-form').classList.toggle('hidden', form !== 'login');
-    document.getElementById('register-form').classList.toggle('hidden', form !== 'register');
-    clearMessages();
-  }
-
   function clearMessages() {
     document.getElementById('login-message').innerText = '';
     document.getElementById('register-message').innerText = '';
   }
+
+  function showForm(form) {
+    document.getElementById('login-form').classList.toggle('hidden', form !== 'login');
+    document.getElementById('register-form').classList.toggle('hidden', form !== 'register');
+    clearMessages();
+    // Запоминаем выбранную форму
+    localStorage.setItem('selectedForm', form);
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    const savedForm = localStorage.getItem('selectedForm') || 'login';
+    showForm(savedForm);
+    loadCaptcha();
+  });
 
   async function loadCaptcha() {
     try {
@@ -160,9 +168,6 @@
       document.getElementById('login-message').innerText = 'Ошибка входа';
     }
   });
-
-  // Загрузка капчи при загрузке страницы
-  loadCaptcha();
 </script>
 
 </body>
