@@ -1,176 +1,111 @@
-from quart import Quart, request, session, redirect, send_from_directory, jsonify
-import asyncio
-import json
+from flask import Flask, request, jsonify, send_from_directory, session
+from flask_socketio import SocketIO, emit
+from flask_cors import CORS
 import os
-import secrets
-from PIL import Image, ImageDraw, ImageFont
-from io import BytesIO
-import base64
+import json
+import random
+import string
 
-app = Quart(__name__)
-app.secret_key = 'supersecretkey'
+app = Flask(__name__, static_url_path='', static_folder='.')
+app.secret_key = 'секретный_ключ'
+CORS(app, supports_credentials=True)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 USERS_FILE = 'users.json'
-CHAT_FILE = 'chat.json'
-CAPTCHA_TEXT = ''
+MESSAGES_FILE = 'messages.json'
 
-if not os.path.exists(USERS_FILE):
-    with open(USERS_FILE, 'w') as f:
-        json.dump({}, f)
-
-if not os.path.exists(CHAT_FILE):
-    with open(CHAT_FILE, 'w') as f:
-        json.dump([], f)
-
-
-@app.before_serving
-async def init_files():
-    if not os.path.exists(USERS_FILE):
-        with open(USERS_FILE, 'w') as f:
-            json.dump({}, f)
-    if not os.path.exists(CHAT_FILE):
-        with open(CHAT_FILE, 'w') as f:
-            json.dump([], f)
-
-
-@app.route('/')
-async def index():
-    return redirect('/reg.html')
-
-
-@app.route('/reg.html')
-async def reg_page():
-    return await send_from_directory('.', 'reg.html')
-
-
-@app.route('/chat.html')
-async def chat_page():
-    if 'username' not in session:
-        return redirect('/reg.html')
-    return await send_from_directory('.', 'chat.html')
-
-
-@app.route('/generate_captcha')
-async def generate_captcha():
-    global CAPTCHA_TEXT
-    CAPTCHA_TEXT = ''.join(secrets.choice('ABCDEFGHJKLMNPQRSTUVWXYZ23456789') for _ in range(5))
-    image = Image.new('RGB', (100, 40), color=(255, 255, 255))
-    draw = ImageDraw.Draw(image)
-    try:
-        font = ImageFont.truetype("arial.ttf", 22)
-    except:
-        font = ImageFont.load_default()
-    draw.text((10, 8), CAPTCHA_TEXT, font=font, fill=(0, 0, 0))
-
-    buf = BytesIO()
-    image.save(buf, format='PNG')
-    data = base64.b64encode(buf.getvalue()).decode('utf-8')
-    return jsonify({'captcha': data})
-
-
+# Загрузка пользователей и сообщений
 def load_users():
-    with open(USERS_FILE, 'r') as f:
+    if not os.path.exists(USERS_FILE):
+        return {}
+    with open(USERS_FILE, 'r', encoding='utf-8') as f:
         return json.load(f)
 
-
 def save_users(users):
-    with open(USERS_FILE, 'w') as f:
-        json.dump(users, f)
+    with open(USERS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(users, f, indent=2, ensure_ascii=False)
 
+def load_messages():
+    if not os.path.exists(MESSAGES_FILE):
+        return []
+    with open(MESSAGES_FILE, 'r', encoding='utf-8') as f:
+        return json.load(f)
 
+def save_messages(messages):
+    with open(MESSAGES_FILE, 'w', encoding='utf-8') as f:
+        json.dump(messages, f, indent=2, ensure_ascii=False)
+
+# Генерация капчи
+@app.route('/generate_captcha')
+def generate_captcha():
+    captcha = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+    session['captcha'] = captcha
+    return jsonify({'captcha': captcha})
+
+# Регистрация
 @app.route('/register', methods=['POST'])
-async def register():
-    data = await request.form
-    username = data.get('username')
-    password = data.get('password')
-    captcha = data.get('captcha')
-
-    if not all([username, password, captcha]):
-        return 'Missing fields', 400
-    if captcha.upper() != CAPTCHA_TEXT:
-        return 'Invalid CAPTCHA', 400
+def register():
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    password = data.get('password', '').strip()
+    captcha = data.get('captcha', '').strip()
+    if not username or not password or not captcha:
+        return jsonify({'message': 'Заполните все поля'}), 400
+    if captcha != session.get('captcha'):
+        return jsonify({'message': 'Неверная капча'}), 400
 
     users = load_users()
     if username in users:
-        return 'User already exists', 400
-
-    users[username] = password
+        return jsonify({'message': 'Пользователь уже существует'}), 400
+    users[username] = {'password': password}
     save_users(users)
     session['username'] = username
-    return redirect('/chat.html')
+    return jsonify({'message': 'Регистрация успешна'})
 
-
+# Вход
 @app.route('/login', methods=['POST'])
-async def login():
-    data = await request.form
-    username = data.get('username')
-    password = data.get('password')
-    captcha = data.get('captcha')
-
-    if not all([username, password, captcha]):
-        return 'Missing fields', 400
-    if captcha.upper() != CAPTCHA_TEXT:
-        return 'Invalid CAPTCHA', 400
-
+def login():
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    password = data.get('password', '').strip()
     users = load_users()
-    if username not in users or users[username] != password:
-        return 'Invalid credentials', 401
-
+    if username not in users or users[username]['password'] != password:
+        return jsonify({'message': 'Неверные данные'}), 400
     session['username'] = username
-    return redirect('/chat.html')
+    return jsonify({'message': 'Вход выполнен'})
 
+# Отдача HTML-файлов
+@app.route('/')
+def root():
+    return send_from_directory('.', 'reg.html')
 
-@app.route('/send_message', methods=['POST'])
-async def send_message():
+@app.route('/chat.html')
+def chat_page():
+    return send_from_directory('.', 'chat.html')
+
+# Socket.IO чат
+@socketio.on('connect')
+def handle_connect():
     if 'username' not in session:
-        return 'Unauthorized', 401
+        return False  # отключить сокет, если не вошел
+    emit('load_messages', load_messages())
 
-    data = await request.get_json()
-    message = data.get('message')
-    recipient = data.get('recipient')  # optional
+@socketio.on('send_message')
+def handle_send(data):
+    username = session.get('username', 'Аноним')
+    text = data.get('text', '').strip()
+    if not text:
+        return
 
-    if not message:
-        return 'Empty message', 400
+    message = {'user': username, 'text': text}
+    messages = load_messages()
+    messages.append(message)
+    if len(messages) > 100:
+        messages = messages[-100:]
+    save_messages(messages)
 
-    with open(CHAT_FILE, 'r') as f:
-        chat = json.load(f)
+    emit('new_message', message, broadcast=True)
 
-    chat.append({
-        'sender': session['username'],
-        'message': message,
-        'recipient': recipient
-    })
-
-    with open(CHAT_FILE, 'w') as f:
-        json.dump(chat, f)
-
-    return 'Message sent'
-
-
-@app.route('/get_messages')
-async def get_messages():
-    if 'username' not in session:
-        return 'Unauthorized', 401
-
-    with open(CHAT_FILE, 'r') as f:
-        chat = json.load(f)
-
-    username = session['username']
-    visible_messages = [msg for msg in chat if not msg.get('recipient') or msg.get('recipient') == username or msg['sender'] == username]
-
-    return jsonify(visible_messages)
-
-
-@app.route('/logout')
-async def logout():
-    session.clear()
-    return redirect('/reg.html')
-
-
-@app.route('/<path:path>')
-async def serve_static(path):
-    return await send_from_directory('.', path)
-
-
+# Запуск
 if __name__ == '__main__':
-    app.run()
+    socketio.run(app, host='0.0.0.0', port=10000)
