@@ -1,1 +1,274 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Регистрация и Вход с капчей</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 400px;
+      margin: 40px auto;
+      background: #121916;
+      color: #c1d8c1;
+      user-select: none;
+    }
+    form {
+      background: #1e2a20;
+      border: 1px solid #3a553a;
+      border-radius: 8px;
+      padding: 25px 20px;
+      margin-bottom: 25px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.8);
+    }
+    h2 {
+      color: #7fa57f;
+      margin-bottom: 15px;
+      text-align: center;
+      text-shadow: 0 0 5px #4a6f4a;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: #a8c6a8;
+    }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 10px 12px;
+      margin-top: 6px;
+      box-sizing: border-box;
+      border: 1.5px solid #3a553a;
+      border-radius: 5px;
+      font-size: 1rem;
+      background: #2a3b2a;
+      color: #c1d8c1;
+      transition: border-color 0.3s ease, background-color 0.3s ease;
+    }
+    input[type="text"]:focus, input[type="password"]:focus {
+      border-color: #4caf50;
+      outline: none;
+      background: #395039;
+      color: #e1f0e1;
+    }
+    button {
+      margin-top: 25px;
+      padding: 12px 20px;
+      background: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 1rem;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+      width: 100%;
+      box-shadow: 0 0 8px #3a7d3a;
+    }
+    button:hover {
+      background: #3a8a3a;
+      box-shadow: 0 0 12px #4caf50;
+    }
+    #captcha-box {
+      margin-top: 15px;
+      font-weight: bold;
+      font-size: 26px;
+      letter-spacing: 6px;
+      background-color: #395039;
+      color: #c1d8c1;
+      padding: 12px 18px;
+      user-select: none;
+      display: inline-block;
+      border-radius: 6px;
+      border: 1px solid #4caf50;
+      font-family: 'Courier New', Courier, monospace;
+      text-shadow: 0 0 5px #2f4f2f;
+    }
+    #captcha-box + button {
+      margin-left: 10px;
+      background: #4caf50;
+      color: #121916;
+      padding: 8px 14px;
+      font-size: 0.9rem;
+      width: auto;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s ease, color 0.3s ease;
+      box-shadow: 0 0 5px #3a7d3a;
+    }
+    #captcha-box + button:hover {
+      background: #357a35;
+      color: white;
+      box-shadow: 0 0 10px #4caf50;
+    }
+    .hidden {
+      display: none;
+    }
+    #tabs {
+      text-align: center;
+      margin-bottom: 30px;
+      user-select: none;
+    }
+    #tabs button {
+      margin-right: 15px;
+      padding: 10px 18px;
+      font-weight: 600;
+      font-size: 1.05rem;
+      background: #3a553a;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #a8c6a8;
+      transition: background-color 0.3s ease, color 0.3s ease;
+      box-shadow: 0 0 6px #2c402c;
+    }
+    #tabs button:hover {
+      background: #4caf50;
+      color: white;
+      box-shadow: 0 0 12px #4caf50;
+    }
+    #tabs button.active {
+      background: #4caf50;
+      color: white;
+      cursor: default;
+      box-shadow: 0 0 14px #4caf50;
+    }
+    #login-message, #register-message {
+      margin-top: 15px;
+      font-weight: 700;
+      font-size: 1rem;
+      color: #e57373; /* красный, чуть мягче */
+      min-height: 22px;
+      text-align: center;
+      text-shadow: 0 0 2px #7a3a3a;
+    }
+  </style>
+</head>
+<body>
+
+<div id="tabs">
+  <button id="btn-login" onclick="showForm('login')">Вход</button>
+  <button id="btn-register" onclick="showForm('register')">Регистрация</button>
+</div>
+
+<form id="login-form">
+  <h2>Вход</h2>
+  <label>Имя пользователя:
+    <input type="text" id="login-username" required autocomplete="username" />
+  </label>
+  <label>Пароль:
+    <input type="password" id="login-password" required autocomplete="current-password" />
+  </label>
+  <button type="submit">Войти</button>
+  <div id="login-message"></div>
+</form>
+
+<form id="register-form" class="hidden">
+  <h2>Регистрация</h2>
+  <label>Имя пользователя:
+    <input type="text" id="reg-username" required autocomplete="username" />
+  </label>
+  <label>Пароль:
+    <input type="password" id="reg-password" required autocomplete="new-password" />
+  </label>
+
+  <div style="margin-top: 20px; text-align: center;">
+    <div>
+      Капча: <span id="captcha-box"></span>
+      <button type="button" onclick="loadCaptcha()">Обновить</button>
+    </div>
+    <label style="margin-top: 10px; display: block;">
+      Введите капчу:
+      <input type="text" id="captcha-input" required autocomplete="off" style="margin-top:5px; background:#2a3b2a; border:1.5px solid #3a553a; color:#c1d8c1; border-radius:5px; padding:8px 10px;" />
+    </label>
+  </div>
+
+  <button type="submit">Зарегистрироваться</button>
+  <div id="register-message"></div>
+</form>
+
+<script>
+  function clearMessages() {
+    document.getElementById('login-message').innerText = '';
+    document.getElementById('register-message').innerText = '';
+  }
+
+  function showForm(form) {
+    document.getElementById('login-form').classList.toggle('hidden', form !== 'login');
+    document.getElementById('register-form').classList.toggle('hidden', form !== 'register');
+    clearMessages();
+    localStorage.setItem('selectedForm', form);
+    // Подсветка кнопок табов
+    document.getElementById('btn-login').classList.toggle('active', form === 'login');
+    document.getElementById('btn-register').classList.toggle('active', form === 'register');
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    const savedForm = localStorage.getItem('selectedForm') || 'login';
+    showForm(savedForm);
+    loadCaptcha();
+  });
+
+  async function loadCaptcha() {
+    try {
+      const response = await fetch('/generate_captcha', { credentials: 'include' });
+      if (!response.ok) throw new Error('Ошибка загрузки капчи');
+      const data = await response.json();
+      document.getElementById('captcha-box').innerText = data.captcha;
+      document.getElementById('captcha-input').value = '';
+      document.getElementById('register-message').innerText = '';
+    } catch (err) {
+      document.getElementById('register-message').innerText = err.message;
+    }
+  }
+
+  document.getElementById('register-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const username = document.getElementById('reg-username').value.trim();
+    const password = document.getElementById('reg-password').value.trim();
+    const captcha = document.getElementById('captcha-input').value.trim();
+
+    try {
+      const res = await fetch('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username, password, captcha })
+      });
+      const data = await res.json();
+      document.getElementById('register-message').innerText = data.message;
+      if (res.ok) {
+        window.location.href = '/chat.html';
+      }
+    } catch {
+      document.getElementById('register-message').innerText = 'Ошибка регистрации';
+    }
+  });
+
+  document.getElementById('login-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value.trim();
+
+    try {
+      const res = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      document.getElementById('login-message').innerText = data.message;
+      if (res.ok) {
+        window.location.href = '/chat.html';
+      }
+    } catch {
+      document.getElementById('login-message').innerText = 'Ошибка входа';
+    }
+  });
+</script>
+
+</body>
+</html>
 
