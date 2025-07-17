@@ -77,7 +77,7 @@ def register():
         new_user = User(username=username, password_hash=hashed_pw)
         db.session.add(new_user)
         db.session.commit()
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         return jsonify({'message': 'Ошибка при сохранении пользователя'}), 500
 
@@ -109,7 +109,7 @@ def logout():
     session.pop('username', None)
     return jsonify({'message': 'Выход выполнен'}), 200
 
-# Роутинг HTML
+# Роутинг HTML файлов
 
 @app.route('/')
 def index():
@@ -130,7 +130,7 @@ def static_files(filename):
 @socketio.on('connect')
 def on_connect():
     if 'username' not in session:
-        return False  # запретить соединение
+        return False  # Запретить соединение
     msgs = Message.query.order_by(Message.id.asc()).all()
     msgs_list = [{'user': m.user, 'text': m.text} for m in msgs]
     emit('load_messages', msgs_list)
@@ -155,7 +155,7 @@ def on_send_message(data):
 
     emit('new_message', {'user': user, 'text': text}, broadcast=True)
 
-# Создаём таблицы при старте приложения, если их нет
+# Создаем таблицы при старте приложения, если их нет
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
