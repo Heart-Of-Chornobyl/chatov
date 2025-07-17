@@ -1,7 +1,7 @@
 import os
 import random
 import string
-from flask import Flask, request, jsonify, session, render_template
+from flask import Flask, request, jsonify, session, send_from_directory
 from flask_cors import CORS
 from flask_session import Session
 from flask_sqlalchemy import SQLAlchemy
@@ -13,7 +13,7 @@ from flask_socketio import SocketIO, emit
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'замени_на_сложный_секрет')
 
-# Строка подключения к PostgreSQL (обновлена)
+# Строка подключения к PostgreSQL
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://chat_db_lwq3_user:qKaqAEbbnUB5VQ7olYRvQmQRSmAGWyqi@dpg-d1s7il0dl3ps739uq8p0-a.oregon-postgres.render.com/chat_db_lwq3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -111,17 +111,21 @@ def logout():
     session.pop('username', None)
     return jsonify({'message': 'Выход выполнен'}), 200
 
-# --- Роутинг на HTML ---
+# --- Роутинг HTML-файлов напрямую из корня ---
 
 @app.route('/')
 def index():
-    return render_template('reg.html')
+    return send_from_directory('.', 'reg.html')
 
 @app.route('/chat')
 def chat():
     if 'username' not in session:
-        return render_template('reg.html')
-    return render_template('chat.html')
+        return send_from_directory('.', 'reg.html')
+    return send_from_directory('.', 'chat.html')
+
+@app.route('/<path:filename>')
+def static_files(filename):
+    return send_from_directory('.', filename)
 
 # --- Чат ---
 
