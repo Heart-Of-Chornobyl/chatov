@@ -42,6 +42,9 @@ db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 socketio = SocketIO(app, async_mode='gevent', cors_allowed_origins="*")
 
+# Хранит имена пользователей, которые сейчас онлайн
+online_users = set()
+
 # Модели
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -125,6 +128,7 @@ def chat_page():
     return render_template('chat.html')
 
 # 💬 Socket.IO
+
 @socketio.on('connect')
 def handle_connect():
     user_id = session.get('user_id')
@@ -135,11 +139,30 @@ def handle_connect():
     if not user:
         return False
 
+    # Добавляем пользователя в онлайн множество
+    online_users.add(user.username)
+    # Рассылаем всем обновление статусов
+    socketio.emit('user_statuses', {u: 'online' for u in online_users})
+
     messages = Message.query.order_by(Message.id.asc()).limit(50).all()
     emit('load_messages', [
         {'user': User.query.get(m.user_id).username, 'text': m.content}
         for m in messages
     ])
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    user_id = session.get('user_id')
+    if not user_id:
+        return
+    user = User.query.get(user_id)
+    if not user:
+        return
+
+    # Убираем пользователя из онлайн
+    online_users.discard(user.username)
+    # Отправляем обновление статусов всем
+    socketio.emit('user_statuses', {u: 'online' for u in online_users})
 
 @socketio.on('send_message')
 def handle_send_message(data):
