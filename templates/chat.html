@@ -164,21 +164,31 @@
     div.appendChild(usernameSpan);
     div.appendChild(replyBtn);
 
-    // Если это файл — показываем ссылку или изображение
+    // Если это файл — показываем ссылку или изображение с возможностью скачать
     if (msg.file) {
-      if (msg.file.type.startsWith('image/')) {
+      const mimeType = msg.file.type || '';
+
+      if (mimeType.startsWith('image/')) {
+        const a = document.createElement('a');
+        a.href = msg.file.data;
+        a.download = msg.file.name;
+        a.title = 'Скачать ' + msg.file.name;
+
         const img = document.createElement('img');
         img.src = msg.file.data;
         img.alt = msg.file.name;
         img.className = 'file-image';
+
+        a.appendChild(img);
         div.appendChild(document.createTextNode(': '));
-        div.appendChild(img);
+        div.appendChild(a);
       } else {
         const a = document.createElement('a');
         a.href = msg.file.data;
         a.textContent = `[Файл: ${msg.file.name}]`;
         a.className = 'file-link';
         a.target = '_blank';
+        a.download = msg.file.name;
         div.appendChild(document.createTextNode(': '));
         div.appendChild(a);
       }
