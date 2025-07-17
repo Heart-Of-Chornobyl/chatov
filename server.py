@@ -13,11 +13,9 @@ from flask_socketio import SocketIO, emit
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'замени_на_сложный_секрет')
 
-# Строка подключения к PostgreSQL
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://chat_db_lwq3_user:qKaqAEbbnUB5VQ7olYRvQmQRSmAGWyqi@dpg-d1s7il0dl3ps739uq8p0-a.oregon-postgres.render.com/chat_db_lwq3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Настройки сессий
 app.config['SESSION_TYPE'] = 'sqlalchemy'
 app.config['SESSION_SQLALCHEMY_TABLE'] = 'sessions'
 app.config['SESSION_USE_SIGNER'] = True
@@ -32,7 +30,7 @@ sess = Session(app)
 CORS(app, supports_credentials=True)
 socketio = SocketIO(app, cors_allowed_origins="*", manage_session=False)
 
-# --- Модели БД ---
+# --- Модели базы данных ---
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -73,19 +71,16 @@ def register():
     if captcha.upper() != session.get('captcha', '').upper():
         return jsonify({'message': 'Неверная капча'}), 400
 
-    try:
-        if User.query.filter_by(username=username).first():
-            return jsonify({'message': 'Пользователь уже существует'}), 400
+    if User.query.filter_by(username=username).first():
+        return jsonify({'message': 'Пользователь уже существует'}), 400
 
-        hashed_pw = generate_password_hash(password)
-        new_user = User(username=username, password_hash=hashed_pw)
-        db.session.add(new_user)
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'message': f'Ошибка сервера: {str(e)}'}), 500
+    hashed_pw = generate_password_hash(password)
+    new_user = User(username=username, password_hash=hashed_pw)
+    db.session.add(new_user)
+    db.session.commit()
 
     session['username'] = username
+
     return jsonify({'message': 'Регистрация успешна'}), 200
 
 # --- Вход ---
@@ -99,14 +94,12 @@ def login():
     if not username or not password:
         return jsonify({'message': 'Все поля обязательны'}), 400
 
-    try:
-        user = User.query.filter_by(username=username).first()
-        if user is None or not check_password_hash(user.password_hash, password):
-            return jsonify({'message': 'Неверное имя пользователя или пароль'}), 400
-    except Exception as e:
-        return jsonify({'message': f'Ошибка сервера: {str(e)}'}), 500
+    user = User.query.filter_by(username=username).first()
+    if user is None or not check_password_hash(user.password_hash, password):
+        return jsonify({'message': 'Неверное имя пользователя или пароль'}), 400
 
     session['username'] = username
+
     return jsonify({'message': 'Вход успешен'}), 200
 
 # --- Выход ---
@@ -116,7 +109,7 @@ def logout():
     session.pop('username', None)
     return jsonify({'message': 'Выход выполнен'}), 200
 
-# --- Роутинг HTML-файлов напрямую из корня ---
+# --- Статические файлы и маршруты HTML ---
 
 @app.route('/')
 def index():
@@ -132,7 +125,7 @@ def chat():
 def static_files(filename):
     return send_from_directory('.', filename)
 
-# --- Чат ---
+# --- Чат на Socket.IO ---
 
 @socketio.on('connect')
 def on_connect():
@@ -153,25 +146,14 @@ def on_send_message(data):
 
     user = session['username']
     msg = Message(user=user, text=text)
-    try:
-        db.session.add(msg)
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        return  # Можно дополнительно логировать ошибку
+    db.session.add(msg)
+    db.session.commit()
 
     emit('new_message', {'user': user, 'text': text}, broadcast=True)
 
-# --- Запуск ---
+# --- Запуск приложения ---
 
 if __name__ == '__main__':
     with app.app_context():
-        try:
-            db.session.execute('SELECT 1')
-            print('Подключение к базе успешно')
-        except Exception as e:
-            print('Ошибка подключения к базе:', e)
-        print('Создаю таблицы (если их нет)...')
-        db.create_all()
-        print('Таблицы созданы')
+        db.create_all()  # Создаст таблицы, если их нет, и не тронет, если есть
     socketio.run(app, host='0.0.0.0', port=10000)
