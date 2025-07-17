@@ -200,6 +200,18 @@
 
   socket.on('new_message', addMessage);
 
+  // Принимаем файлы
+  socket.on('new_file', msg => {
+    addMessage({
+      user: msg.user,
+      file: {
+        name: msg.filename,
+        type: msg.filedata.split(';')[0].split(':')[1], // mime type из data URI
+        data: msg.filedata
+      }
+    });
+  });
+
   sendBtn.addEventListener('click', () => {
     const text = input.value.trim();
     if (!text) return;
@@ -225,11 +237,8 @@
       // Отправляем объект с информацией о файле и base64 содержимым
       socket.emit('send_file', {
         toUser: fileSendTarget,
-        file: {
-          name: file.name,
-          type: file.type,
-          data: reader.result
-        }
+        filename: file.name,
+        filedata: reader.result
       });
       fileInput.value = '';
       fileSendTarget = null;
