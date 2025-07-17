@@ -1,7 +1,6 @@
 import os
 import random
 import string
-
 from flask import Flask, request, jsonify, session, send_from_directory
 from flask_cors import CORS
 from flask_session import Session
@@ -9,30 +8,26 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_socketio import SocketIO, emit
 
-# --- Конфигурация ---
+app = Flask(__name__, static_folder='.', static_url_path='')
+app.secret_key = os.getenv('SECRET_KEY', 'секретный_ключ_замени')
 
-app = Flask(__name__, static_url_path='', static_folder='.')
-app.secret_key = os.getenv('SECRET_KEY', 'замени_на_сложный_секрет')
-
-# Подключение к базе PostgreSQL из переменной окружения
-POSTGRES_URL = os.getenv('DATABASE_URL', 'postgresql://user:pass@host:port/dbname')
-
-app.config['SQLALCHEMY_DATABASE_URI'] = POSTGRES_URL
+# Строка подключения к PostgreSQL (лучше в Render хранить в DATABASE_URL)
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
+    'DATABASE_URL',
+    'postgresql://chat_db_6jqp_user:N89VOuIv1nDWhsSE6mTuIFYNarI4LyVx@dpg-d1s4c8ngi27c73dm04t0-a.oregon-postgres.render.com/chat_db_6jqp'
+)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Настройки сессий через базу (SQLAlchemy)
+# Настройки сессии
 app.config['SESSION_TYPE'] = 'sqlalchemy'
+app.config['SESSION_SQLALCHEMY'] = SQLAlchemy(app)
 app.config['SESSION_USE_SIGNER'] = True
 app.config['SESSION_PERMANENT'] = False
+Session(app)
 
-db = SQLAlchemy(app)
-app.config['SESSION_SQLALCHEMY'] = db
-sess = Session(app)
+db = app.config['SESSION_SQLALCHEMY']
 
-CORS(app, supports_credentials=True)
-socketio = SocketIO(app, cors_allowed_origins="*", manage_session=False)
-
-# --- Модели ---
+# Модели
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -46,8 +41,11 @@ class Message(db.Model):
     user = db.Column(db.String(100), nullable=False)
     text = db.Column(db.Text, nullable=False)
 
-# --- Капча ---
+# Инициализация SocketIO
+CORS(app, supports_credentials=True)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
+# Капча
 def generate_captcha_text(length=5):
     letters = string.ascii_uppercase + string.digits
     return ''.join(random.choices(letters, k=length))
@@ -58,8 +56,7 @@ def generate_captcha():
     session['captcha'] = captcha
     return jsonify({'captcha': captcha})
 
-# --- Регистрация ---
-
+# Регистрация
 @app.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
@@ -82,11 +79,9 @@ def register():
     db.session.commit()
 
     session['username'] = username
-
     return jsonify({'message': 'Регистрация успешна'}), 200
 
-# --- Вход ---
-
+# Вход
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
@@ -94,38 +89,36 @@ def login():
     password = data.get('password', '').strip()
 
     if not username or not password:
-        return jsonify({'message': 'Заполните все поля'}), 400
+        return jsonify({'message': 'Все поля обязательны'}), 400
 
     user = User.query.filter_by(username=username).first()
-    if user is None or not check_password_hash(user.password_hash, password):
+    if not user or not check_password_hash(user.password_hash, password):
         return jsonify({'message': 'Неверное имя пользователя или пароль'}), 400
 
     session['username'] = username
     return jsonify({'message': 'Вход успешен'}), 200
 
-# --- Выход ---
-
+# Выход
 @app.route('/logout')
 def logout():
     session.pop('username', None)
     return jsonify({'message': 'Выход выполнен'}), 200
 
-# --- Страницы ---
-
+# Страницы
 @app.route('/')
-def root():
+def index():
     return send_from_directory('.', 'reg.html')
 
 @app.route('/chat.html')
 def chat_page():
     return send_from_directory('.', 'chat.html')
 
-# --- WebSocket ---
+# WebSocket
 
 @socketio.on('connect')
 def on_connect():
     if 'username' not in session:
-        return False  # Отклоняем, если неавторизован
+        return False  # запретить подключение
 
     msgs = Message.query.order_by(Message.id.asc()).all()
     msgs_list = [{'user': m.user, 'text': m.text} for m in msgs]
@@ -147,8 +140,7 @@ def on_send_message(data):
 
     emit('new_message', {'user': user, 'text': text}, broadcast=True)
 
-# --- Запуск ---
-
+# Запуск
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
