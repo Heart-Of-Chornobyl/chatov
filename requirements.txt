@@ -6,3 +6,4 @@ Flask-Session
 gevent  # Используем gevent вместо eventlet
 gunicorn
 flask-cors
+psycopg2-binary
