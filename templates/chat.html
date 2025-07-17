@@ -132,14 +132,6 @@
     vertical-align: middle;
     margin-right: 8px;
   }
-  .time-text {
-    font-weight: 600;
-    font-size: 12px;
-    color: #9bc99b;
-    vertical-align: middle;
-    margin-right: 8px;
-    user-select: none;
-  }
 
   /* Медиазапросы для мобильных устройств */
   @media screen and (max-width: 768px) {
@@ -189,7 +181,7 @@
 </head>
 <body>
 
-<h2>Чат</h2>
+<h2>Чат <a href="/logout" id="logout-link" style="color: #4caf50; font-size: 14px; margin-left: 15px; text-decoration: none;">Выход</a></h2>
 <div id="messages"></div>
 
 <div id="input-area">
@@ -215,39 +207,20 @@
   // { 'Alice': 'online', 'Bob': 'offline' }
   let userStatuses = {};
 
-  // Функция форматирования времени [HH:MM]
-  function formatTime(date) {
-    const h = date.getHours().toString().padStart(2,'0');
-    const m = date.getMinutes().toString().padStart(2,'0');
-    return `[${h}:${m}]`;
-  }
-
   function addMessage(msg) {
     const div = document.createElement('div');
     div.className = 'message';
-
-    // Время — текущее время при получении сообщения (локальное)
-    const timeSpan = document.createElement('span');
-    timeSpan.className = 'time-text';
-    timeSpan.textContent = formatTime(new Date());
 
     // Индикатор статуса
     const statusSpan = document.createElement('span');
     statusSpan.className = 'status-indicator';
 
     // Текст статуса [online]/[offline]
-    const statusTextSpan = document.createElement('span');
-    statusTextSpan.className = 'status-text';
-
     const status = userStatuses[msg.user];
     if (status === 'online') {
       statusSpan.classList.add('online');
-      statusTextSpan.textContent = '[online]';
-      statusTextSpan.style.color = '#4caf50';
     } else {
       statusSpan.classList.add('offline');
-      statusTextSpan.textContent = '[offline]';
-      statusTextSpan.style.color = '#e04c4c';
     }
 
     const usernameSpan = document.createElement('span');
@@ -269,10 +242,8 @@
       input.focus();
     });
 
-    // Добавляем все в div сообщения: время, статус, текст статуса, ник, кнопка ответить
-    div.appendChild(timeSpan);
+    // Добавляем все в div сообщения: статус, ник, кнопка ответить
     div.appendChild(statusSpan);
-    div.appendChild(statusTextSpan);
     div.appendChild(usernameSpan);
     div.appendChild(replyBtn);
 
@@ -318,8 +289,6 @@
   // Обновляем статус пользователей
   socket.on('user_statuses', (statuses) => {
     userStatuses = statuses;
-    // Чтобы при изменении статуса, обновить уже показанные сообщения — можно перерисовать,
-    // но это просто пример, сейчас статусы обновятся только при новых сообщениях
   });
 
   socket.on('load_messages', msgs => {
