@@ -1,242 +1,116 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8" />
-<title>Чат с Личными Сообщениями</title>
-<style>
-  body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    max-width: 600px;
-    margin: 20px auto;
-    background-color: #121916;
-    color: #c1d8c1;
-    user-select: none;
-  }
-  h2 {
-    text-align: center;
-    color: #7fa57f;
-    text-shadow: 0 0 5px #4a6f4a;
-    margin-bottom: 15px;
-  }
-  #messages {
-    border: 1px solid #3a553a;
-    height: 400px;
-    overflow-y: scroll;
-    padding: 10px;
-    margin-bottom: 10px;
-    background: #1e2a20;
-    border-radius: 8px;
-    box-shadow: inset 0 0 8px #223322;
-  }
-  .message {
-    margin-bottom: 8px;
-    line-height: 1.3;
-    padding: 2px 6px;
-    border-radius: 4px;
-  }
-  .message.personal {
-    background-color: #294829;
-    color: #a5d6a7;
-  }
-  .username {
-    font-weight: 700;
-    color: #80c080;
-    cursor: pointer;
-    text-shadow: 0 0 4px #4caf50;
-    user-select: text;
-  }
-  .reply-btn {
-    margin-left: 8px;
-    font-size: 12px;
-    cursor: pointer;
-    color: #4caf50;
-    user-select: none;
-    transition: color 0.3s ease;
-  }
-  .reply-btn:hover {
-    color: #7fff7f;
-  }
-  #input-area {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 6px;
-  }
-  #recipient-select {
-    width: 150px;
-    padding: 8px 10px;
-    border-radius: 6px;
-    border: 1.5px solid #3a553a;
-    background: #2a3b2a;
-    color: #c1d8c1;
-    font-size: 16px;
-  }
-  #input-area input[type="text"] {
-    flex-grow: 1;
-    padding: 10px 12px;
-    font-size: 16px;
-    border: 1.5px solid #3a553a;
-    border-radius: 6px;
-    background: #2a3b2a;
-    color: #c1d8c1;
-    transition: border-color 0.3s ease, background-color 0.3s ease;
-  }
-  #input-area input[type="text"]:focus {
-    border-color: #4caf50;
-    background: #395039;
-    outline: none;
-    color: #e1f0e1;
-  }
-  #input-area button {
-    padding: 10px 18px;
-    font-size: 16px;
-    background: #4caf50;
-    border: none;
-    border-radius: 6px;
-    color: white;
-    cursor: pointer;
-    font-weight: 700;
-    box-shadow: 0 0 8px #3a7d3a;
-    transition: background-color 0.3s ease, box-shadow 0.3s ease;
-  }
-  #input-area button:hover {
-    background: #3a8a3a;
-    box-shadow: 0 0 12px #4caf50;
-  }
-</style>
-<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-</head>
-<body>
+import os
+from flask import Flask, request, session, redirect, send_file, jsonify
+from flask_sqlalchemy import SQLAlchemy
+from flask_socketio import SocketIO, emit
+from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
+import random
 
-<h2>Чат с Личными Сообщениями</h2>
+app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'devkey')
 
-<div id="messages"></div>
+# PostgreSQL URI через переменную окружения (например, Render)
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-<div id="input-area">
-  <select id="recipient-select" title="Выберите получателя (Личное сообщение) или 'Все' для публичного">
-    <option value="">Все</option>
-  </select>
-  <input type="text" id="msg-input" placeholder="Введите сообщение..." autocomplete="off" />
-  <button id="send-btn">Отправить</button>
-</div>
+socketio = SocketIO(app)
+db = SQLAlchemy(app)
 
-<script>
-  const socket = io();
+# Модель пользователя
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(64), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
 
-  const messagesDiv = document.getElementById('messages');
-  const input = document.getElementById('msg-input');
-  const sendBtn = document.getElementById('send-btn');
-  const recipientSelect = document.getElementById('recipient-select');
+# Модель сообщений
+class Message(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(64), nullable=False)
+    text = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
-  let currentUser = null;
-  let usersSet = new Set();
+# Создание таблиц (один раз)
+with app.app_context():
+    db.create_all()
 
-  function addMessage(msg) {
-    // Если ЛС — показываем только если ты отправитель или получатель
-    if (msg.recipient && msg.recipient !== currentUser && msg.user !== currentUser) {
-      return;
-    }
+# Капча (примитивная)
+def generate_captcha():
+    a, b = random.randint(1, 9), random.randint(1, 9)
+    session['captcha'] = str(a + b)
+    return f"{a} + {b} = ?"
 
-    const div = document.createElement('div');
-    div.className = 'message';
-    if (msg.recipient) div.classList.add('personal');
+@app.route('/')
+def index():
+    return redirect('/reg.html')
 
-    const usernameSpan = document.createElement('span');
-    usernameSpan.textContent = msg.user;
-    usernameSpan.className = 'username';
-    usernameSpan.title = 'Нажмите, чтобы ответить';
+@app.route('/reg.html')
+def serve_reg():
+    return send_file('reg.html')
 
-    const replyBtn = document.createElement('span');
-    replyBtn.textContent = '[Ответить]';
-    replyBtn.className = 'reply-btn';
+@app.route('/chat.html')
+def serve_chat():
+    if 'username' in session:
+        return send_file('chat.html')
+    return redirect('/reg.html')
 
-    function onReplyClick() {
-      recipientSelect.value = msg.user;
-      input.value = '';
-      input.focus();
-    }
-    usernameSpan.addEventListener('click', onReplyClick);
-    replyBtn.addEventListener('click', onReplyClick);
+@app.route('/captcha')
+def captcha():
+    return jsonify({"captcha": generate_captcha()})
 
-    div.appendChild(usernameSpan);
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.get_json()
+    if not all(k in data for k in ('username', 'password', 'captcha')):
+        return 'Недостаточно данных', 400
+    if data['captcha'] != session.get('captcha'):
+        return 'Неверная капча', 400
 
-    if (msg.recipient) {
-      const personalMark = document.createElement('span');
-      personalMark.textContent = ' (лично) ';
-      personalMark.style.color = '#a5d6a7';
-      personalMark.style.fontWeight = '700';
-      div.appendChild(personalMark);
-    }
+    if User.query.filter_by(username=data['username']).first():
+        return 'Пользователь уже существует', 400
 
-    div.appendChild(replyBtn);
+    user = User(
+        username=data['username'],
+        password_hash=generate_password_hash(data['password'])
+    )
+    db.session.add(user)
+    db.session.commit()
+    session['username'] = user.username
+    return 'OK'
 
-    const textSpan = document.createElement('span');
-    textSpan.textContent = ': ' + msg.text;
-    div.appendChild(textSpan);
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    if not all(k in data for k in ('username', 'password', 'captcha')):
+        return 'Недостаточно данных', 400
+    if data['captcha'] != session.get('captcha'):
+        return 'Неверная капча', 400
 
-    messagesDiv.appendChild(div);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-  }
+    user = User.query.filter_by(username=data['username']).first()
+    if not user or not check_password_hash(user.password_hash, data['password']):
+        return 'Неверный логин или пароль', 400
 
-  function addUserToSelect(username) {
-    if (!usersSet.has(username)) {
-      usersSet.add(username);
-      const option = document.createElement('option');
-      option.value = username;
-      option.textContent = username;
-      recipientSelect.appendChild(option);
-    }
-  }
+    session['username'] = user.username
+    return 'OK'
 
-  // Получаем текущего пользователя и список пользователей из cookies или API (пример через fetch)
-  async function fetchCurrentUser() {
-    // Пример: можно реализовать endpoint /whoami для получения username из сессии
-    try {
-      const res = await fetch('/whoami', {credentials: 'include'});
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      currentUser = data.username;
-      addUserToSelect(currentUser);
-    } catch {
-      currentUser = null;
-    }
-  }
+@socketio.on('connect')
+def on_connect():
+    if 'username' not in session:
+        return False
 
-  socket.on('load_messages', msgs => {
-    messagesDiv.innerHTML = '';
-    usersSet.clear();
-    recipientSelect.innerHTML = '<option value="">Все</option>';
-    msgs.forEach(msg => {
-      addMessage(msg);
-      addUserToSelect(msg.user);
-      if (msg.recipient) addUserToSelect(msg.recipient);
-    });
-  });
+    messages = Message.query.order_by(Message.timestamp.desc()).limit(50).all()
+    messages.reverse()
+    emit('load_messages', [{"user": m.username, "text": m.text} for m in messages])
 
-  socket.on('new_message', msg => {
-    addMessage(msg);
-    addUserToSelect(msg.user);
-    if (msg.recipient) addUserToSelect(msg.recipient);
-  });
+@socketio.on('send_message')
+def on_message(data):
+    username = session.get('username')
+    text = data.get('text')
+    if not username or not text:
+        return
+    msg = Message(username=username, text=text)
+    db.session.add(msg)
+    db.session.commit()
+    emit('new_message', {"user": username, "text": text}, broadcast=True)
 
-  sendBtn.addEventListener('click', () => {
-    const text = input.value.trim();
-    if (!text) return;
-    const recipient = recipientSelect.value || null;
-    socket.emit('send_message', { text, recipient });
-    input.value = '';
-    recipientSelect.value = '';
-  });
-
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter') {
-      sendBtn.click();
-      e.preventDefault();
-    }
-  });
-
-  fetchCurrentUser();
-
-</script>
-
-</body>
-</html>
+if __name__ == '__main__':
+    socketio.run(app, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
