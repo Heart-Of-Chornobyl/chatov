@@ -16,7 +16,7 @@ def init_db():
         db.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-@@ -28,12 +30,11 @@ def init_db():
+def init_db():
         db.commit()
 
 def get_db():
@@ -31,7 +31,7 @@ def get_db():
 def load_messages():
     if not os.path.exists(MESSAGES_FILE):
         return []
-@@ -44,54 +45,51 @@ def save_messages(messages):
+def save_messages(messages):
     with open(MESSAGES_FILE, 'w', encoding='utf-8') as f:
         json.dump(messages, f, indent=2, ensure_ascii=False)
 
@@ -101,7 +101,7 @@ def login():
 @app.route('/')
 def root():
     return send_from_directory('.', 'reg.html')
-@@ -100,12 +98,11 @@ def root():
+def root():
 def chat_page():
     return send_from_directory('.', 'chat.html')
 
@@ -116,7 +116,7 @@ def handle_connect():
     emit('load_messages', load_messages())
 
 @socketio.on('send_message')
-@@ -114,18 +111,17 @@ def handle_send(data):
+def handle_send(data):
     text = data.get('text', '').strip()
     if not text:
         return
