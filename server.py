@@ -73,16 +73,19 @@ def register():
     if captcha.upper() != session.get('captcha', '').upper():
         return jsonify({'message': 'Неверная капча'}), 400
 
-    if User.query.filter_by(username=username).first():
-        return jsonify({'message': 'Пользователь уже существует'}), 400
+    try:
+        if User.query.filter_by(username=username).first():
+            return jsonify({'message': 'Пользователь уже существует'}), 400
 
-    hashed_pw = generate_password_hash(password)
-    new_user = User(username=username, password_hash=hashed_pw)
-    db.session.add(new_user)
-    db.session.commit()
+        hashed_pw = generate_password_hash(password)
+        new_user = User(username=username, password_hash=hashed_pw)
+        db.session.add(new_user)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': f'Ошибка сервера: {str(e)}'}), 500
 
     session['username'] = username
-
     return jsonify({'message': 'Регистрация успешна'}), 200
 
 # --- Вход ---
@@ -96,12 +99,14 @@ def login():
     if not username or not password:
         return jsonify({'message': 'Все поля обязательны'}), 400
 
-    user = User.query.filter_by(username=username).first()
-    if user is None or not check_password_hash(user.password_hash, password):
-        return jsonify({'message': 'Неверное имя пользователя или пароль'}), 400
+    try:
+        user = User.query.filter_by(username=username).first()
+        if user is None or not check_password_hash(user.password_hash, password):
+            return jsonify({'message': 'Неверное имя пользователя или пароль'}), 400
+    except Exception as e:
+        return jsonify({'message': f'Ошибка сервера: {str(e)}'}), 500
 
     session['username'] = username
-
     return jsonify({'message': 'Вход успешен'}), 200
 
 # --- Выход ---
@@ -111,7 +116,7 @@ def logout():
     session.pop('username', None)
     return jsonify({'message': 'Выход выполнен'}), 200
 
-# --- Роутинг HTML-файлов ---
+# --- Роутинг HTML-файлов напрямую из корня ---
 
 @app.route('/')
 def index():
@@ -148,8 +153,12 @@ def on_send_message(data):
 
     user = session['username']
     msg = Message(user=user, text=text)
-    db.session.add(msg)
-    db.session.commit()
+    try:
+        db.session.add(msg)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return  # Можно дополнительно логировать ошибку
 
     emit('new_message', {'user': user, 'text': text}, broadcast=True)
 
@@ -157,7 +166,12 @@ def on_send_message(data):
 
 if __name__ == '__main__':
     with app.app_context():
-        print("Создаю таблицы в базе данных...")
+        try:
+            db.session.execute('SELECT 1')
+            print('Подключение к базе успешно')
+        except Exception as e:
+            print('Ошибка подключения к базе:', e)
+        print('Создаю таблицы (если их нет)...')
         db.create_all()
-        print("Таблицы созданы.")
+        print('Таблицы созданы')
     socketio.run(app, host='0.0.0.0', port=10000)
