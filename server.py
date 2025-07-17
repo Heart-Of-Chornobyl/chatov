@@ -1,25 +1,23 @@
 import os
 import random
 import string
-from flask import Flask, request, jsonify, session
+from flask import Flask, request, jsonify, session, render_template
 from flask_cors import CORS
 from flask_session import Session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_socketio import SocketIO, emit
 
 # --- Конфигурация ---
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'замени_на_сложный_секрет')
 
-# Строка подключения к PostgreSQL из Render
-POSTGRES_URL = 'postgresql://chat_db_lwq3_user:qKaqAEbbnUB5VQ7olYRvQmQRSmAGWyqi@dpg-d1s7il0dl3ps739uq8p0-a.oregon-postgres.render.com/chat_db_lwq3'
-
-app.config['SQLALCHEMY_DATABASE_URI'] = POSTGRES_URL
+# Строка подключения к PostgreSQL (обновлена)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://chat_db_lwq3_user:qKaqAEbbnUB5VQ7olYRvQmQRSmAGWyqi@dpg-d1s7il0dl3ps739uq8p0-a.oregon-postgres.render.com/chat_db_lwq3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Настройки сессий: сохранять в базе через SQLAlchemy
+# Настройки сессий
 app.config['SESSION_TYPE'] = 'sqlalchemy'
 app.config['SESSION_SQLALCHEMY_TABLE'] = 'sessions'
 app.config['SESSION_USE_SIGNER'] = True
@@ -48,9 +46,7 @@ class Message(db.Model):
     user = db.Column(db.String(100), nullable=False)
     text = db.Column(db.Text, nullable=False)
 
-# Таблица sessions создастся автоматически Flask-Session через SQLAlchemy
-
-# --- Капча (простая) ---
+# --- Капча ---
 
 def generate_captcha_text(length=5):
     letters = string.ascii_uppercase + string.digits
@@ -85,7 +81,7 @@ def register():
     db.session.add(new_user)
     db.session.commit()
 
-    session['username'] = username  # сохраняем в сессии
+    session['username'] = username
 
     return jsonify({'message': 'Регистрация успешна'}), 200
 
@@ -115,14 +111,24 @@ def logout():
     session.pop('username', None)
     return jsonify({'message': 'Выход выполнен'}), 200
 
+# --- Роутинг на HTML ---
+
+@app.route('/')
+def index():
+    return render_template('reg.html')
+
+@app.route('/chat')
+def chat():
+    if 'username' not in session:
+        return render_template('reg.html')
+    return render_template('chat.html')
+
 # --- Чат ---
 
 @socketio.on('connect')
 def on_connect():
     if 'username' not in session:
-        return False  # запретить соединение, если не залогинен
-
-    # Отправить все старые сообщения
+        return False
     msgs = Message.query.order_by(Message.id.asc()).all()
     msgs_list = [{'user': m.user, 'text': m.text} for m in msgs]
     emit('load_messages', msgs_list)
@@ -130,7 +136,7 @@ def on_connect():
 @socketio.on('send_message')
 def on_send_message(data):
     if 'username' not in session:
-        return  # если нет сессии - игнорируем
+        return
 
     text = data.get('text', '').strip()
     if not text:
@@ -143,9 +149,9 @@ def on_send_message(data):
 
     emit('new_message', {'user': user, 'text': text}, broadcast=True)
 
-# --- Запуск и создание таблиц ---
+# --- Запуск ---
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()  # создаём таблицы, если ещё нет
+        db.create_all()
     socketio.run(app, host='0.0.0.0', port=10000)
