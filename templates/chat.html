@@ -176,6 +176,14 @@
       font-size: 0.95rem;
     }
   }
+
+  /* Стиль для разделителя */
+  .divider {
+    text-align: center;
+    margin: 10px 0;
+    font-size: 18px;
+    color: #c1d8c1;
+  }
 </style>
 <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
@@ -183,6 +191,9 @@
 
 <h2>Чат <a href="/logout" id="logout-link" style="color: #4caf50; font-size: 14px; margin-left: 15px; text-decoration: none;">Выход</a></h2>
 <div id="messages"></div>
+
+<!-- Добавленный разделитель -->
+<div class="divider">--------</div>
 
 <div id="input-area">
   <input type="text" id="msg-input" placeholder="Введите сообщение..." autocomplete="off" />
@@ -202,10 +213,6 @@
 
   // Для хранения ника пользователя, которому отправляем файл
   let fileSendTarget = null;
-
-  // Объект с текущим статусом пользователей, пример:
-  // { 'Alice': 'online', 'Bob': 'offline' }
-  let userStatuses = {};
 
   function addMessage(msg) {
     const div = document.createElement('div');
