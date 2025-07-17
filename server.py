@@ -158,6 +158,29 @@ def handle_send_message(data):
 
     emit('new_message', {'user': user.username, 'text': text}, broadcast=True)
 
+
+@socketio.on('send_file')
+def handle_send_file(data):
+    user_id = session.get('user_id')
+    if not user_id:
+        return
+
+    user = User.query.get(user_id)
+    if not user:
+        return
+
+    filename = data.get('filename')
+    filedata = data.get('filedata')  # base64-строка с префиксом "data:..."
+
+    if not filename or not filedata:
+        return
+
+    emit('new_file', {
+        'user': user.username,
+        'filename': filename,
+        'filedata': filedata
+    }, broadcast=True)
+
 # ▶️ Запуск
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
