@@ -38,6 +38,7 @@
     cursor: pointer;
     text-shadow: 0 0 4px #4caf50;
     user-select: text;
+    position: relative;
   }
   .reply-btn {
     margin-left: 8px;
@@ -86,6 +87,28 @@
     background: #3a8a3a;
     box-shadow: 0 0 12px #4caf50;
   }
+  /* Скрытый инпут для файлов */
+  .hidden-file-input {
+    display: none;
+  }
+  /* Ссылка на файл */
+  .file-link {
+    color: #6fcf70;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+  .file-link:hover {
+    color: #a1e9a1;
+  }
+  /* Для превью изображений */
+  .file-image {
+    max-width: 200px;
+    max-height: 150px;
+    display: block;
+    margin-top: 5px;
+    border-radius: 6px;
+    box-shadow: 0 0 6px #4caf50;
+  }
 </style>
 <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
@@ -99,12 +122,19 @@
   <button id="send-btn">Отправить</button>
 </div>
 
+<!-- Скрытый input для загрузки файлов -->
+<input type="file" id="file-input" class="hidden-file-input" />
+
 <script>
   const socket = io();
 
   const messagesDiv = document.getElementById('messages');
   const input = document.getElementById('msg-input');
   const sendBtn = document.getElementById('send-btn');
+  const fileInput = document.getElementById('file-input');
+
+  // Для хранения ника пользователя, которому отправляем файл
+  let fileSendTarget = null;
 
   function addMessage(msg) {
     const div = document.createElement('div');
@@ -113,7 +143,13 @@
     const usernameSpan = document.createElement('span');
     usernameSpan.textContent = msg.user;
     usernameSpan.className = 'username';
-    usernameSpan.title = 'Нажмите, чтобы ответить';
+    usernameSpan.title = 'Нажмите, чтобы ответить или отправить файл';
+
+    // При клике на ник — открываем выбор файла для отправки
+    usernameSpan.addEventListener('click', () => {
+      fileSendTarget = msg.user;
+      fileInput.click();
+    });
 
     const replyBtn = document.createElement('span');
     replyBtn.textContent = '[Ответить]';
@@ -123,15 +159,35 @@
       input.value = '@' + msg.user + ', ';
       input.focus();
     }
-    usernameSpan.addEventListener('click', onReplyClick);
     replyBtn.addEventListener('click', onReplyClick);
 
     div.appendChild(usernameSpan);
     div.appendChild(replyBtn);
 
-    const textSpan = document.createElement('span');
-    textSpan.textContent = ': ' + msg.text;
-    div.appendChild(textSpan);
+    // Если это файл — показываем ссылку или изображение
+    if (msg.file) {
+      if (msg.file.type.startsWith('image/')) {
+        const img = document.createElement('img');
+        img.src = msg.file.data;
+        img.alt = msg.file.name;
+        img.className = 'file-image';
+        div.appendChild(document.createTextNode(': '));
+        div.appendChild(img);
+      } else {
+        const a = document.createElement('a');
+        a.href = msg.file.data;
+        a.textContent = `[Файл: ${msg.file.name}]`;
+        a.className = 'file-link';
+        a.target = '_blank';
+        div.appendChild(document.createTextNode(': '));
+        div.appendChild(a);
+      }
+    } else {
+      // Обычное текстовое сообщение
+      const textSpan = document.createElement('span');
+      textSpan.textContent = ': ' + msg.text;
+      div.appendChild(textSpan);
+    }
 
     messagesDiv.appendChild(div);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -157,8 +213,31 @@
       e.preventDefault();
     }
   });
+
+  // Обработка выбора файла
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      // Отправляем объект с информацией о файле и base64 содержимым
+      socket.emit('send_file', {
+        toUser: fileSendTarget,
+        file: {
+          name: file.name,
+          type: file.type,
+          data: reader.result
+        }
+      });
+      fileInput.value = '';
+      fileSendTarget = null;
+    };
+
+    reader.readAsDataURL(file);
+  });
 </script>
 
 </body>
 </html>
-
