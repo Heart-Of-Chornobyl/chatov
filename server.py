@@ -126,12 +126,5 @@ def handle_send_message(data):
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()
-    socketio.run(app, host='0.0.0.0', port=10000)
-
-# --- Запуск и создание таблиц ---
-
-if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()  # создаём таблицы, если ещё нет
+        db.create_all()  # создаёт таблицы, если их ещё нет
     socketio.run(app, host='0.0.0.0', port=10000)
