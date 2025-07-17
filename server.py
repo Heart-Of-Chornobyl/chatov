@@ -1,123 +1,151 @@
+import os
+import random
+import string
 from flask import Flask, request, jsonify, session
+from flask_cors import CORS
+from flask_session import Session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_cors import CORS
-from datetime import datetime
+from flask_socketio import SocketIO, emit, join_room, leave_room
+
+# --- Конфигурация ---
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'твой_секретный_ключ_сюда'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://chat_db_lwq3_user:qKaqAEbbnUB5VQ7olYRvQmQRSmAGWyqi@dpg-d1s7il0dl3ps739uq8p0-a.oregon-postgres.render.com/chat_db_lwq3'
+app.secret_key = os.getenv('SECRET_KEY', 'замени_на_сложный_секрет')
+
+# Используй здесь свою строку подключения к Postgres (например, из Render)
+POSTGRES_URL = os.getenv('DATABASE_URL', 'postgresql://user:pass@host:port/dbname')
+
+app.config['SQLALCHEMY_DATABASE_URI'] = POSTGRES_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-db = SQLAlchemy(app)
-CORS(app)  # Если фронтенд отдельно, для разрешения CORS
+# Настройки сессий: сохранять в базе через SQLAlchemy
+app.config['SESSION_TYPE'] = 'sqlalchemy'
+app.config['SESSION_SQLALCHEMY_TABLE'] = 'sessions'
+app.config['SESSION_USE_SIGNER'] = True
+app.config['SESSION_PERMANENT'] = False
 
-# --- Модели ---
+# --- Инициализация ---
+
+db = SQLAlchemy(app)
+app.config['SESSION_SQLALCHEMY'] = db
+sess = Session(app)
+
+CORS(app, supports_credentials=True)
+socketio = SocketIO(app, cors_allowed_origins="*", manage_session=False)
+
+# --- Модели БД ---
 
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
+    username = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
-
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
-    
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
 
 class Message(db.Model):
     __tablename__ = 'messages'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    content = db.Column(db.Text, nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    user = db.Column(db.String(100), nullable=False)
+    text = db.Column(db.Text, nullable=False)
 
-    user = db.relationship('User', backref=db.backref('messages', lazy=True))
+# Таблица sessions создастся автоматически Flask-Session через SQLAlchemy
 
+# --- Капча (простая) ---
 
-# --- Создание таблиц ---
-@app.before_first_request
-def create_tables():
-    db.create_all()
+def generate_captcha_text(length=5):
+    letters = string.ascii_uppercase + string.digits
+    return ''.join(random.choices(letters, k=length))
 
+@app.route('/generate_captcha')
+def generate_captcha():
+    captcha = generate_captcha_text()
+    session['captcha'] = captcha
+    return jsonify({'captcha': captcha})
 
-# --- Роуты ---
+# --- Регистрация ---
 
 @app.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
+    username = data.get('username', '').strip()
+    password = data.get('password', '').strip()
+    captcha = data.get('captcha', '').strip()
 
-    if not username or not password:
-        return jsonify({'error': 'Username and password required'}), 400
+    if not username or not password or not captcha:
+        return jsonify({'message': 'Все поля обязательны'}), 400
+
+    if captcha.upper() != session.get('captcha', '').upper():
+        return jsonify({'message': 'Неверная капча'}), 400
 
     if User.query.filter_by(username=username).first():
-        return jsonify({'error': 'User already exists'}), 400
+        return jsonify({'message': 'Пользователь уже существует'}), 400
 
-    user = User(username=username)
-    user.set_password(password)
-    db.session.add(user)
+    hashed_pw = generate_password_hash(password)
+    new_user = User(username=username, password_hash=hashed_pw)
+    db.session.add(new_user)
     db.session.commit()
 
-    return jsonify({'message': 'User registered successfully'})
+    session['username'] = username  # сохраняем в сессии
 
+    return jsonify({'message': 'Регистрация успешна'}), 200
+
+# --- Вход ---
 
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
+    username = data.get('username', '').strip()
+    password = data.get('password', '').strip()
+
+    if not username or not password:
+        return jsonify({'message': 'Все поля обязательны'}), 400
 
     user = User.query.filter_by(username=username).first()
-    if user is None or not user.check_password(password):
-        return jsonify({'error': 'Invalid username or password'}), 401
+    if user is None or not check_password_hash(user.password_hash, password):
+        return jsonify({'message': 'Неверное имя пользователя или пароль'}), 400
 
-    session['user_id'] = user.id
-    session['username'] = user.username
-    return jsonify({'message': 'Logged in successfully'})
+    session['username'] = username
 
+    return jsonify({'message': 'Вход успешен'}), 200
 
-@app.route('/logout', methods=['POST'])
+# --- Выход ---
+
+@app.route('/logout')
 def logout():
-    session.clear()
-    return jsonify({'message': 'Logged out successfully'})
+    session.pop('username', None)
+    return jsonify({'message': 'Выход выполнен'}), 200
 
+# --- Чат ---
 
-@app.route('/send_message', methods=['POST'])
-def send_message():
-    if 'user_id' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
+@socketio.on('connect')
+def on_connect():
+    if 'username' not in session:
+        return False  # запретить соединение, если не залогинен
 
-    data = request.get_json()
-    content = data.get('content')
-    if not content:
-        return jsonify({'error': 'Message content required'}), 400
+    # Отправить все старые сообщения
+    msgs = Message.query.order_by(Message.id.asc()).all()
+    msgs_list = [{'user': m.user, 'text': m.text} for m in msgs]
+    emit('load_messages', msgs_list)
 
-    msg = Message(user_id=session['user_id'], content=content)
+@socketio.on('send_message')
+def on_send_message(data):
+    if 'username' not in session:
+        return  # если нет сессии - игнорируем
+
+    text = data.get('text', '').strip()
+    if not text:
+        return
+
+    user = session['username']
+    msg = Message(user=user, text=text)
     db.session.add(msg)
     db.session.commit()
 
-    return jsonify({'message': 'Message sent'})
+    emit('new_message', {'user': user, 'text': text}, broadcast=True)
 
-
-@app.route('/get_messages', methods=['GET'])
-def get_messages():
-    # Вернем последние 50 сообщений с именами пользователей и временем
-    messages = Message.query.order_by(Message.timestamp.desc()).limit(50).all()
-    messages.reverse()  # чтобы показать в хронологическом порядке
-
-    result = []
-    for m in messages:
-        result.append({
-            'id': m.id,
-            'username': m.user.username,
-            'content': m.content,
-            'timestamp': m.timestamp.isoformat()
-        })
-    return jsonify(result)
-
+# --- Запуск и создание таблиц ---
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    with app.app_context():
+        db.create_all()  # создаём таблицы, если ещё нет
+    socketio.run(app, host='0.0.0.0', port=10000)
