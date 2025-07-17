@@ -144,7 +144,7 @@ def handle_connect():
     # Рассылаем всем обновление статусов
     socketio.emit('user_statuses', {u: 'online' for u in online_users})
 
-    messages = Message.query.order_by(Message.id.asc()).limit(50).all()
+    messages = Message.query.order_by(Message.id.asc()).all()
     emit('load_messages', [
         {'user': User.query.get(m.user_id).username, 'text': m.content}
         for m in messages
@@ -178,10 +178,20 @@ def handle_send_message(data):
     if not text:
         return
 
+    # Удалить самое старое сообщение, если в базе уже 50
+    total_messages = Message.query.count()
+    if total_messages >= 50:
+        oldest = Message.query.order_by(Message.id.asc()).first()
+        if oldest:
+            db.session.delete(oldest)
+            db.session.commit()
+
+    # Добавляем новое сообщение
     msg = Message(user_id=user.id, content=text)
     db.session.add(msg)
     db.session.commit()
 
+    # Рассылаем клиентам
     emit('new_message', {'user': user.username, 'text': text}, broadcast=True)
 
 @socketio.on('send_file')
