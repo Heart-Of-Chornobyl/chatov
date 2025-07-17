@@ -14,6 +14,9 @@ monkey.patch_all()
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'supersecretkey')
 
+# ✅ Лимит файла — 1 ГБ
+app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024  # 1 GB
+
 # База данных
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if not DATABASE_URL:
@@ -157,7 +160,6 @@ def handle_send_message(data):
     db.session.commit()
 
     emit('new_message', {'user': user.username, 'text': text}, broadcast=True)
-
 
 @socketio.on('send_file')
 def handle_send_file(data):
