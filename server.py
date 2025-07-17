@@ -2,7 +2,7 @@ import os
 import random
 import string
 
-from flask import Flask, request, jsonify, send_from_directory, session
+from flask import Flask, request, jsonify, session, send_from_directory
 from flask_cors import CORS
 from flask_session import Session
 from flask_sqlalchemy import SQLAlchemy
@@ -14,14 +14,14 @@ from flask_socketio import SocketIO, emit
 app = Flask(__name__, static_url_path='', static_folder='.')
 app.secret_key = os.getenv('SECRET_KEY', 'замени_на_сложный_секрет')
 
-# Подключение к БД PostgreSQL (пример: postgresql://user:pass@host:port/dbname)
-POSTGRES_URL = os.getenv('DATABASE_URL', 'postgresql://user:pass@host:5432/dbname')
+# Подключение к базе PostgreSQL из переменной окружения
+POSTGRES_URL = os.getenv('DATABASE_URL', 'postgresql://user:pass@host:port/dbname')
+
 app.config['SQLALCHEMY_DATABASE_URI'] = POSTGRES_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Сессии через БД
+# Настройки сессий через базу (SQLAlchemy)
 app.config['SESSION_TYPE'] = 'sqlalchemy'
-app.config['SESSION_SQLALCHEMY_TABLE'] = 'sessions'
 app.config['SESSION_USE_SIGNER'] = True
 app.config['SESSION_PERMANENT'] = False
 
@@ -82,6 +82,7 @@ def register():
     db.session.commit()
 
     session['username'] = username
+
     return jsonify({'message': 'Регистрация успешна'}), 200
 
 # --- Вход ---
@@ -100,19 +101,7 @@ def login():
         return jsonify({'message': 'Неверное имя пользователя или пароль'}), 400
 
     session['username'] = username
-    return jsonify({'message': 'Вход выполнен'}), 200
-
-# --- HTML страницы ---
-
-@app.route('/')
-def root():
-    return send_from_directory('.', 'reg.html')
-
-@app.route('/chat.html')
-def chat_page():
-    if 'username' not in session:
-        return jsonify({'message': 'Требуется вход'}), 401
-    return send_from_directory('.', 'chat.html')
+    return jsonify({'message': 'Вход успешен'}), 200
 
 # --- Выход ---
 
@@ -121,12 +110,22 @@ def logout():
     session.pop('username', None)
     return jsonify({'message': 'Выход выполнен'}), 200
 
+# --- Страницы ---
+
+@app.route('/')
+def root():
+    return send_from_directory('.', 'reg.html')
+
+@app.route('/chat.html')
+def chat_page():
+    return send_from_directory('.', 'chat.html')
+
 # --- WebSocket ---
 
 @socketio.on('connect')
 def on_connect():
     if 'username' not in session:
-        return False  # отклонить соединение
+        return False  # Отклоняем, если неавторизован
 
     msgs = Message.query.order_by(Message.id.asc()).all()
     msgs_list = [{'user': m.user, 'text': m.text} for m in msgs]
