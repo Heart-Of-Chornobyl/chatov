@@ -13,9 +13,11 @@ from flask_socketio import SocketIO, emit
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'замени_на_сложный_секрет')
 
+# Строка подключения к PostgreSQL
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://chat_db_lwq3_user:qKaqAEbbnUB5VQ7olYRvQmQRSmAGWyqi@dpg-d1s7il0dl3ps739uq8p0-a.oregon-postgres.render.com/chat_db_lwq3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Настройки сессий
 app.config['SESSION_TYPE'] = 'sqlalchemy'
 app.config['SESSION_SQLALCHEMY_TABLE'] = 'sessions'
 app.config['SESSION_USE_SIGNER'] = True
@@ -109,7 +111,7 @@ def logout():
     session.pop('username', None)
     return jsonify({'message': 'Выход выполнен'}), 200
 
-# --- Статические файлы и маршруты HTML ---
+# --- Роутинг HTML-файлов (предполагается, что они рядом с этим файлом) ---
 
 @app.route('/')
 def index():
@@ -125,12 +127,12 @@ def chat():
 def static_files(filename):
     return send_from_directory('.', filename)
 
-# --- Чат на Socket.IO ---
+# --- Чат через SocketIO ---
 
 @socketio.on('connect')
 def on_connect():
     if 'username' not in session:
-        return False
+        return False  # Отклонить соединение
     msgs = Message.query.order_by(Message.id.asc()).all()
     msgs_list = [{'user': m.user, 'text': m.text} for m in msgs]
     emit('load_messages', msgs_list)
@@ -151,9 +153,9 @@ def on_send_message(data):
 
     emit('new_message', {'user': user, 'text': text}, broadcast=True)
 
-# --- Запуск приложения ---
+# --- Создание таблиц при старте ---
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()  # Создаст таблицы, если их нет, и не тронет, если есть
+        db.create_all()  # Создаст таблицы, если их нет
     socketio.run(app, host='0.0.0.0', port=10000)
