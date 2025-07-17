@@ -2,6 +2,7 @@ flask
 flask-socketio
 flask-sqlalchemy
 flask-bcrypt
+Flask-Session
 gevent  # Используем gevent вместо eventlet
 gunicorn
 flask-cors
