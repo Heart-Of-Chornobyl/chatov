@@ -6,7 +6,6 @@ from flask_session import Session
 from flask_cors import CORS
 from flask_socketio import SocketIO
 from gevent import monkey
-
 monkey.patch_all()
 
 app = Flask(__name__)
@@ -53,55 +52,33 @@ class Message(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     content = db.Column(db.Text, nullable=False)
 
-with app.app_context():
-    db.create_all()
+try:
+    with app.app_context():
+        db.create_all()
+    print("Database tables created or verified.")
+except Exception as e:
+    print("Error during database initialization:", e)
 
 @app.route('/')
 def index():
     if 'user_id' in session:
-        return redirect('/chat')
+        return f"Hello, user {session['user_id']}!"
     else:
         return redirect('/login')
 
 @app.route('/login', methods=['GET', 'POST'])
-@app.route('/reg', methods=['GET', 'POST'])
-def login_reg():
-    error = None
+def login():
     if request.method == 'POST':
-        action = request.form.get('action')  # 'login' или 'register'
         username = request.form.get('username')
         password = request.form.get('password')
-
-        if not username or not password:
-            error = "Введите логин и пароль"
+        user = User.query.filter_by(username=username).first()
+        if user and user.check_password(password):
+            session['user_id'] = user.id
+            return redirect('/')
         else:
-            if action == 'login':
-                user = User.query.filter_by(username=username).first()
-                if user and user.check_password(password):
-                    session['user_id'] = user.id
-                    return redirect('/chat')
-                else:
-                    error = "Неверный логин или пароль"
-            elif action == 'register':
-                if User.query.filter_by(username=username).first():
-                    error = "Пользователь уже существует"
-                else:
-                    new_user = User(username=username)
-                    new_user.set_password(password)
-                    db.session.add(new_user)
-                    db.session.commit()
-                    session['user_id'] = new_user.id
-                    return redirect('/chat')
-            else:
-                error = "Неизвестное действие"
-
-    return render_template('reg.html', error=error)
-
-@app.route('/chat')
-def chat():
-    if 'user_id' not in session:
-        return redirect('/login')
-    return render_template('chat.html')
+            return "Invalid username or password", 401
+    # Используем reg.html как универсальный шаблон для входа/регистрации
+    return render_template('reg.html')
 
 @app.route('/logout')
 def logout():
