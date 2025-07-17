@@ -13,19 +13,15 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'замени_на_сложный_секрет')
 
-# Используй здесь свою строку подключения к Postgres (например, из Render)
 POSTGRES_URL = os.getenv('DATABASE_URL', 'postgresql://user:pass@host:port/dbname')
 
 app.config['SQLALCHEMY_DATABASE_URI'] = POSTGRES_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Настройки сессий: сохранять в базе через SQLAlchemy
 app.config['SESSION_TYPE'] = 'sqlalchemy'
 app.config['SESSION_SQLALCHEMY_TABLE'] = 'sessions'
 app.config['SESSION_USE_SIGNER'] = True
 app.config['SESSION_PERMANENT'] = False
-
-# --- Инициализация ---
 
 db = SQLAlchemy(app)
 app.config['SESSION_SQLALCHEMY'] = db
@@ -45,12 +41,12 @@ class User(db.Model):
 class Message(db.Model):
     __tablename__ = 'messages'
     id = db.Column(db.Integer, primary_key=True)
-    user = db.Column(db.String(100), nullable=False)
+    sender = db.Column(db.String(100), nullable=False)
     text = db.Column(db.Text, nullable=False)
+    # Для личного сообщения: получатель, иначе None для публичного
+    recipient = db.Column(db.String(100), nullable=True)
 
-# Таблица sessions создастся автоматически Flask-Session через SQLAlchemy
-
-# --- Капча (простая) ---
+# --- Капча ---
 
 def generate_captcha_text(length=5):
     letters = string.ascii_uppercase + string.digits
@@ -85,7 +81,7 @@ def register():
     db.session.add(new_user)
     db.session.commit()
 
-    session['username'] = username  # сохраняем в сессии
+    session['username'] = username
 
     return jsonify({'message': 'Регистрация успешна'}), 200
 
@@ -120,32 +116,77 @@ def logout():
 @socketio.on('connect')
 def on_connect():
     if 'username' not in session:
-        return False  # запретить соединение, если не залогинен
+        return False
 
-    # Отправить все старые сообщения
-    msgs = Message.query.order_by(Message.id.asc()).all()
-    msgs_list = [{'user': m.user, 'text': m.text} for m in msgs]
+    # Отправляем все публичные и личные сообщения этого пользователя
+    username = session['username']
+    msgs = Message.query.filter(
+        (Message.recipient == None) |  # публичные
+        (Message.sender == username) | # личные от пользователя
+        (Message.recipient == username) # личные ему
+    ).order_by(Message.id.asc()).all()
+
+    msgs_list = []
+    for m in msgs:
+        msgs_list.append({
+            'sender': m.sender,
+            'text': m.text,
+            'recipient': m.recipient  # None — публичное, иначе ник получателя
+        })
     emit('load_messages', msgs_list)
 
 @socketio.on('send_message')
 def on_send_message(data):
     if 'username' not in session:
-        return  # если нет сессии - игнорируем
+        return
 
     text = data.get('text', '').strip()
+    recipient = data.get('recipient')  # ник получателя или null/None
+    user = session['username']
+
     if not text:
         return
 
-    user = session['username']
-    msg = Message(user=user, text=text)
+    # Проверим, если recipient задан, то он должен быть в базе
+    if recipient:
+        recipient_user = User.query.filter_by(username=recipient).first()
+        if recipient_user is None:
+            return  # invalid recipient — игнорируем
+
+    msg = Message(sender=user, text=text, recipient=recipient)
     db.session.add(msg)
     db.session.commit()
 
-    emit('new_message', {'user': user, 'text': text}, broadcast=True)
+    # Отправляем сообщение всем, кто должен его видеть
+    # Публичное — всем, личное — только отправителю и получателю
+
+    msg_data = {'sender': user, 'text': text, 'recipient': recipient}
+
+    if recipient:
+        # Отправляем только двум юзерам
+        emit('new_message', msg_data, room=user)
+        emit('new_message', msg_data, room=recipient)
+    else:
+        # Публичное — всем
+        emit('new_message', msg_data, broadcast=True)
+
+@socketio.on('join')
+def on_join(data):
+    if 'username' not in session:
+        return
+    username = session['username']
+    join_room(username)  # каждый пользователь — в своей комнате
+
+@socketio.on('leave')
+def on_leave(data):
+    if 'username' not in session:
+        return
+    username = session['username']
+    leave_room(username)
 
 # --- Запуск и создание таблиц ---
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()  # создаём таблицы, если ещё нет
+        db.create_all()
     socketio.run(app, host='0.0.0.0', port=10000)
