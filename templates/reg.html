@@ -2,6 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Регистрация и Вход с капчей</title>
   <style>
     body {
@@ -12,6 +13,7 @@
       color: #c1d8c1;
       user-select: none;
     }
+
     form {
       background: #1e2a20;
       border: 1px solid #3a553a;
@@ -20,12 +22,14 @@
       margin-bottom: 25px;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.8);
     }
+
     h2 {
       color: #7fa57f;
       margin-bottom: 15px;
       text-align: center;
       text-shadow: 0 0 5px #4a6f4a;
     }
+
     label {
       display: block;
       margin-top: 15px;
@@ -33,6 +37,7 @@
       font-size: 0.95rem;
       color: #a8c6a8;
     }
+
     input[type="text"], input[type="password"] {
       width: 100%;
       padding: 10px 12px;
@@ -45,12 +50,14 @@
       color: #c1d8c1;
       transition: border-color 0.3s ease, background-color 0.3s ease;
     }
+
     input[type="text"]:focus, input[type="password"]:focus {
       border-color: #4caf50;
       outline: none;
       background: #395039;
       color: #e1f0e1;
     }
+
     button {
       margin-top: 25px;
       padding: 12px 20px;
@@ -65,10 +72,12 @@
       width: 100%;
       box-shadow: 0 0 8px #3a7d3a;
     }
+
     button:hover {
       background: #3a8a3a;
       box-shadow: 0 0 12px #4caf50;
     }
+
     #captcha-box {
       margin-top: 15px;
       font-weight: bold;
@@ -84,6 +93,7 @@
       font-family: 'Courier New', Courier, monospace;
       text-shadow: 0 0 5px #2f4f2f;
     }
+
     #captcha-box + button {
       margin-left: 10px;
       background: #4caf50;
@@ -97,19 +107,23 @@
       transition: background-color 0.3s ease, color 0.3s ease;
       box-shadow: 0 0 5px #3a7d3a;
     }
+
     #captcha-box + button:hover {
       background: #357a35;
       color: white;
       box-shadow: 0 0 10px #4caf50;
     }
+
     .hidden {
       display: none;
     }
+
     #tabs {
       text-align: center;
       margin-bottom: 30px;
       user-select: none;
     }
+
     #tabs button {
       margin-right: 15px;
       padding: 10px 18px;
@@ -123,17 +137,20 @@
       transition: background-color 0.3s ease, color 0.3s ease;
       box-shadow: 0 0 6px #2c402c;
     }
+
     #tabs button:hover {
       background: #4caf50;
       color: white;
       box-shadow: 0 0 12px #4caf50;
     }
+
     #tabs button.active {
       background: #4caf50;
       color: white;
       cursor: default;
       box-shadow: 0 0 14px #4caf50;
     }
+
     #login-message, #register-message {
       margin-top: 15px;
       font-weight: 700;
@@ -142,6 +159,50 @@
       min-height: 22px;
       text-align: center;
       text-shadow: 0 0 2px #7a3a3a;
+    }
+
+    /* Медиазапросы для мобильных устройств */
+    @media screen and (max-width: 768px) {
+      body {
+        width: 95%;
+        margin: 10px auto;
+      }
+
+      form {
+        padding: 20px;
+      }
+
+      input[type="text"], input[type="password"], button {
+        font-size: 14px;
+        padding: 8px 12px;
+      }
+
+      #tabs button {
+        padding: 8px 14px;
+        font-size: 1rem;
+      }
+    }
+
+    /* Для маленьких экранов */
+    @media screen and (max-width: 480px) {
+      body {
+        width: 90%;
+        margin: 5px auto;
+      }
+
+      form {
+        padding: 15px;
+      }
+
+      input[type="text"], input[type="password"], button {
+        font-size: 13px;
+        padding: 6px 10px;
+      }
+
+      #tabs button {
+        padding: 6px 12px;
+        font-size: 0.95rem;
+      }
     }
   </style>
 </head>
@@ -271,4 +332,3 @@
 
 </body>
 </html>
-
