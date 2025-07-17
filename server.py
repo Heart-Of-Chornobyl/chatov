@@ -111,7 +111,7 @@ def logout():
     session.pop('username', None)
     return jsonify({'message': 'Выход выполнен'}), 200
 
-# --- Роутинг HTML-файлов напрямую из корня ---
+# --- Роутинг HTML-файлов ---
 
 @app.route('/')
 def index():
@@ -157,5 +157,7 @@ def on_send_message(data):
 
 if __name__ == '__main__':
     with app.app_context():
+        print("Создаю таблицы в базе данных...")
         db.create_all()
+        print("Таблицы созданы.")
     socketio.run(app, host='0.0.0.0', port=10000)
