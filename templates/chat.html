@@ -59,11 +59,8 @@
   .message .username {
     font-weight: 700;
     color: #7fa57f;
-    cursor: pointer;
+    cursor: default; /* отключил переход по клику */
     user-select: text;
-  }
-  .message .username:hover {
-    text-decoration: underline;
   }
 
   .message .reply-btn {
@@ -116,6 +113,7 @@
     margin-top: 6px;
     border: 1px solid #3a553a;
     display: block;
+    cursor: pointer;
   }
 
   #input-area {
@@ -125,6 +123,7 @@
     background: #1e2a20;
     border-top: 1px solid #3a553a;
     flex-shrink: 0;
+    align-items: center;
   }
 
   #msg-input {
@@ -159,6 +158,19 @@
   }
   #send-btn:hover {
     background: #357a35;
+  }
+
+  #attach-btn {
+    font-size: 1.5rem;
+    background: none;
+    border: none;
+    color: #4caf50;
+    cursor: pointer;
+    padding: 0;
+    user-select: none;
+  }
+  #attach-btn:hover {
+    color: #357a35;
   }
 
   /* Мобильная адаптивность */
@@ -196,6 +208,7 @@
 <div id="input-area">
   <input type="text" id="msg-input" placeholder="Введите сообщение..." autocomplete="off" />
   <button id="send-btn" aria-label="Отправить сообщение">Отправить</button>
+  <button id="attach-btn" aria-label="Прикрепить файл">📎</button>
 </div>
 
 <input type="file" id="file-input" class="hidden-file-input" aria-hidden="true" />
@@ -206,6 +219,7 @@
   const messagesDiv = document.getElementById('messages');
   const input = document.getElementById('msg-input');
   const sendBtn = document.getElementById('send-btn');
+  const attachBtn = document.getElementById('attach-btn');
   const fileInput = document.getElementById('file-input');
 
   let userStatuses = {};  // Обновляется с сервера
@@ -224,12 +238,7 @@
     const usernameSpan = document.createElement('span');
     usernameSpan.className = 'username';
     usernameSpan.textContent = msg.user;
-    usernameSpan.title = 'Нажмите, чтобы ответить или отправить файл';
-
-    usernameSpan.addEventListener('click', () => {
-      fileSendTarget = msg.user;
-      fileInput.click();
-    });
+    // Нажатие на имя ничего не делает
 
     const replyBtn = document.createElement('span');
     replyBtn.className = 'reply-btn';
@@ -244,27 +253,52 @@
     div.appendChild(replyBtn);
 
     if (msg.file) {
-      // Файл
-      if (msg.file.type.startsWith('image/')) {
+      const fileUrl = msg.file.data;
+      const fileType = msg.file.type || '';
+      const fileName = msg.file.name || 'file';
+
+      if (fileType.startsWith('image/')) {
         const a = document.createElement('a');
-        a.href = msg.file.data;
-        a.download = msg.file.name;
-        a.title = 'Скачать ' + msg.file.name;
+        a.href = fileUrl;
+        a.download = fileName;
+        a.title = `Скачать ${fileName}`;
 
         const img = document.createElement('img');
-        img.src = msg.file.data;
-        img.alt = msg.file.name;
+        img.src = fileUrl;
+        img.alt = fileName;
         img.className = 'file-image';
 
         a.appendChild(img);
         div.appendChild(document.createTextNode(': '));
         div.appendChild(a);
+
+      } else if (fileType.startsWith('video/')) {
+        // Видео и ссылка на скачивание
+        const video = document.createElement('video');
+        video.controls = true;
+        video.src = fileUrl;
+        video.style.maxWidth = '300px';
+        video.style.maxHeight = '200px';
+        video.title = fileName;
+
+        const downloadLink = document.createElement('a');
+        downloadLink.href = fileUrl;
+        downloadLink.download = fileName;
+        downloadLink.textContent = `Скачать видео: ${fileName}`;
+        downloadLink.style.display = 'block';
+        downloadLink.style.color = '#81c784';
+        downloadLink.style.marginTop = '6px';
+
+        div.appendChild(document.createTextNode(': '));
+        div.appendChild(video);
+        div.appendChild(downloadLink);
+
       } else {
         const a = document.createElement('a');
-        a.href = msg.file.data;
-        a.textContent = `[Файл: ${msg.file.name}]`;
+        a.href = fileUrl;
+        a.textContent = `[Файл: ${fileName}]`;
         a.className = 'file-link';
-        a.download = msg.file.name;
+        a.download = fileName;
         a.target = '_blank';
 
         div.appendChild(document.createTextNode(': '));
@@ -316,6 +350,10 @@
       sendBtn.click();
       e.preventDefault();
     }
+  });
+
+  attachBtn.addEventListener('click', () => {
+    fileInput.click();
   });
 
   fileInput.addEventListener('change', () => {
