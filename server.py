@@ -6,20 +6,17 @@ from flask_session import Session
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 from supabase import create_client
-from gevent import monkey
 
-monkey.patch_all()
-
-# Инициализация приложения Flask
+# Инициализация Flask приложения
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'supersecretkey')
 
-# Настройка подключения к Supabase
-SUPABASE_URL = 'https://your-project-id.supabase.co'  # Заменить на свой URL
-SUPABASE_KEY = 'your-supabase-api-key'  # Заменить на свой API ключ
+# Настройка Supabase
+SUPABASE_URL = 'https://lbppkscrjvjzcjalwkg.supabase.co'  # Замените на свой URL
+SUPABASE_KEY = 'your-supabase-api-key'  # Замените на свой API ключ
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Настройка SQLAlchemy для Supabase (PostgreSQL)
+# Настройка SQLAlchemy для Supabase
 app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://postgres:{SUPABASE_KEY}@{SUPABASE_URL}/postgres'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SESSION_TYPE'] = 'filesystem'
@@ -33,7 +30,7 @@ socketio = SocketIO(app, async_mode='gevent', cors_allowed_origins="*")
 # Хранение пользователей, которые сейчас онлайн
 online_users = set()
 
-# Модели данных
+# Модели данных для пользователей и сообщений
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -51,8 +48,11 @@ class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     content = db.Column(db.Text, nullable=False)
+    file_url = db.Column(db.String(255), nullable=True)
+    file_name = db.Column(db.String(255), nullable=True)
+    file_type = db.Column(db.String(50), nullable=True)
 
-# Инициализация таблиц в базе данных
+# Инициализация базы данных
 try:
     with app.app_context():
         db.create_all()
@@ -127,7 +127,7 @@ def handle_connect():
     socketio.emit('user_statuses', {u: 'online' for u in online_users})
 
     messages = Message.query.order_by(Message.id.asc()).all()
-    emit('load_messages', [{'user': User.query.get(m.user_id).username, 'text': m.content} for m in messages])
+    emit('load_messages', [{'user': User.query.get(m.user_id).username, 'text': m.content, 'file_url': m.file_url, 'file_name': m.file_name, 'file_type': m.file_type} for m in messages])
 
 @socketio.on('disconnect')
 def handle_disconnect():
