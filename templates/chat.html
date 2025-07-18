@@ -4,186 +4,141 @@
 <meta charset="UTF-8" />
 <title>Чат</title>
 <style>
-  body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    max-width: 100%;
-    margin: 20px auto;
-    background-color: #121916;
-    color: #c1d8c1;
-    user-select: none;
-  }
-  h2 {
-    text-align: center;
-    color: #7fa57f;
-    text-shadow: 0 0 5px #4a6f4a;
-    margin-bottom: 15px;
-  }
-  #messages {
-    border: 1px solid #3a553a;
-    height: 400px;
-    overflow-y: scroll;
-    padding: 10px;
-    margin-bottom: 10px;
-    background: #1e2a20;
-    border-radius: 8px;
-    box-shadow: inset 0 0 8px #223322;
-  }
-  .message {
-    margin-bottom: 8px;
-    line-height: 1.3;
-  }
-  .username {
-    font-weight: 700;
-    color: #80c080;
-    cursor: pointer;
-    text-shadow: 0 0 4px #4caf50;
-    user-select: text;
-    position: relative;
-  }
-  .reply-btn {
-    margin-left: 8px;
-    font-size: 12px;
-    cursor: pointer;
-    color: #4caf50;
-    user-select: none;
-    transition: color 0.3s ease;
-  }
-  .reply-btn:hover {
-    color: #7fff7f;
-  }
-  #input-area {
-    display: flex;
-    gap: 6px;
-    justify-content: space-between;
-    margin-top: 10px;
-  }
-  #input-area input[type="text"] {
-    flex-grow: 1;
-    padding: 10px 12px;
-    font-size: 16px;
-    border: 1.5px solid #3a553a;
-    border-radius: 6px;
-    background: #2a3b2a;
-    color: #c1d8c1;
-    transition: border-color 0.3s ease, background-color 0.3s ease;
-  }
-  #input-area input[type="text"]:focus {
-    border-color: #4caf50;
-    background: #395039;
-    outline: none;
-    color: #e1f0e1;
-  }
-  #input-area button {
-    padding: 10px 18px;
-    font-size: 16px;
-    background: #4caf50;
-    border: none;
-    border-radius: 6px;
-    color: white;
-    cursor: pointer;
-    font-weight: 700;
-    box-shadow: 0 0 8px #3a7d3a;
-    transition: background-color 0.3s ease, box-shadow 0.3s ease;
-  }
-  #input-area button:hover {
-    background: #3a8a3a;
-    box-shadow: 0 0 12px #4caf50;
-  }
-  /* Скрытый инпут для файлов */
-  .hidden-file-input {
-    display: none;
-  }
-  /* Ссылка на файл */
-  .file-link {
-    color: #6fcf70;
-    cursor: pointer;
-    text-decoration: underline;
-  }
-  .file-link:hover {
-    color: #a1e9a1;
-  }
-  /* Для превью изображений */
-  .file-image {
-    max-width: 200px;
-    max-height: 150px;
-    display: block;
-    margin-top: 5px;
-    border-radius: 6px;
-    box-shadow: 0 0 6px #4caf50;
-  }
-  /* Индикаторы статуса */
-  .status-indicator {
-    display: inline-block;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    margin-right: 5px;
-    vertical-align: middle;
-  }
-  .online {
-    background-color: #4caf50;
-  }
-  .offline {
-    background-color: #e04c4c;
-  }
-  .status-text {
-    font-weight: 600;
-    font-size: 12px;
-    vertical-align: middle;
-    margin-right: 8px;
-  }
+ body {
+  font-family: Verdana, Arial, sans-serif;
+  background: #f4f4f4;
+  color: #333;
+  margin: 20px auto;
+  padding: 10px;
+  max-width: 900px;
+  border: 1px solid #ccc;
+  background-image: linear-gradient(to bottom, #ffffff, #e5e5e5);
+}
 
-  /* Медиазапросы для мобильных устройств */
-  @media screen and (max-width: 768px) {
-    body {
-      width: 95%;
-      margin: 10px auto;
-    }
+h2 {
+  text-align: center;
+  color: #000080;
+  font-size: 24px;
+  margin-bottom: 20px;
+  text-shadow: 1px 1px 0 #ccc;
+}
 
-    form {
-      padding: 20px;
-    }
+#messages {
+  height: 400px;
+  overflow-y: auto;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #999;
+  border-radius: 4px;
+  box-shadow: inset 0 0 5px #ddd;
+  font-size: 14px;
+}
 
-    input[type="text"], input[type="password"], button {
-      font-size: 14px;
-      padding: 8px 12px;
-    }
+.message {
+  padding: 4px 0;
+  border-bottom: 1px dashed #ccc;
+}
 
-    #tabs button {
-      padding: 8px 14px;
-      font-size: 1rem;
-    }
-  }
+.username {
+  font-weight: bold;
+  color: #003366;
+  cursor: pointer;
+}
 
-  /* Для маленьких экранов */
-  @media screen and (max-width: 480px) {
-    body {
-      width: 90%;
-      margin: 5px auto;
-    }
+.reply-btn {
+  margin-left: 6px;
+  font-size: 12px;
+  color: #006600;
+  cursor: pointer;
+}
 
-    form {
-      padding: 15px;
-    }
+.reply-btn:hover {
+  text-decoration: underline;
+}
 
-    input[type="text"], input[type="password"], button {
-      font-size: 13px;
-      padding: 6px 10px;
-    }
+#input-area {
+  display: flex;
+  gap: 8px;
+  margin-top: 15px;
+}
 
-    #tabs button {
-      padding: 6px 12px;
-      font-size: 0.95rem;
-    }
-  }
+#input-area input[type="text"] {
+  flex-grow: 1;
+  padding: 8px;
+  font-size: 14px;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  background: #fdfdfd;
+  box-shadow: inset 0 1px 2px #ccc;
+}
 
-  /* Стиль для разделителя */
-  .divider {
-    text-align: center;
-    margin: 10px 0;
-    font-size: 18px;
-    color: #c1d8c1;
-  }
+#input-area input[type="text"]:focus {
+  border-color: #6699cc;
+  background: #fff;
+  outline: none;
+}
+
+#input-area button {
+  padding: 8px 16px;
+  background: linear-gradient(to bottom, #d0e4ff, #a3c4f3);
+  border: 1px solid #6699cc;
+  color: #003366;
+  font-weight: bold;
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: 0 2px 5px #ccc;
+}
+
+#input-area button:hover {
+  background: linear-gradient(to bottom, #a3c4f3, #d0e4ff);
+}
+
+/* Ссылки на файлы */
+.file-link {
+  color: #0066cc;
+  text-decoration: underline;
+}
+
+.file-link:hover {
+  color: #004a99;
+}
+
+.file-image {
+  max-width: 180px;
+  max-height: 120px;
+  border: 1px solid #ccc;
+  margin-top: 5px;
+  border-radius: 4px;
+}
+
+.divider {
+  text-align: center;
+  font-weight: bold;
+  color: #666;
+  margin: 10px 0;
+}
+
+/* Индикаторы статуса */
+.status-indicator {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+.online {
+  background-color: #00cc00;
+}
+.offline {
+  background-color: #cc0000;
+}
+
+.status-text {
+  font-size: 12px;
+  font-weight: bold;
+  margin-right: 5px;
+}
 </style>
 <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
