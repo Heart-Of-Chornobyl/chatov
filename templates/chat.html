@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Чат (c файлами через Supabase)</title>
-  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <title>Чат с файлами через Supabase</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
     body, html {
@@ -13,43 +12,17 @@
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       display: flex; flex-direction: column;
     }
-
-    h2 {
-      margin: 0; padding: 20px; text-align: center;
-      font-size: 1.5rem; background: #1e2a20; color: #7fa57f;
-      border-bottom: 1px solid #3a553a;
-    }
-    h2 a { color: #4caf50; margin-left: 10px; text-decoration: none; }
-
     #messages {
       flex-grow: 1; overflow-y: auto;
       background: #1e2a20; padding: 15px;
       border-top: 1px solid #3a553a;
     }
-
     .message {
       margin-bottom: 12px;
     }
-
     .username {
       font-weight: bold; color: #7fa57f;
     }
-
-    .reply-btn {
-      margin-left: 8px; font-size: 0.8rem;
-      color: #a8c6a8; cursor: pointer;
-    }
-
-    .status-indicator {
-      display: inline-block;
-      width: 10px; height: 10px;
-      border-radius: 50%; margin-right: 6px;
-      vertical-align: middle;
-    }
-
-    .online { background-color: #4caf50; }
-    .offline { background-color: #777; }
-
     .file-image {
       max-width: 180px;
       max-height: 120px;
@@ -57,14 +30,12 @@
       border-radius: 6px;
       border: 1px solid #3a553a;
     }
-
     .file-link {
       display: block;
       margin-top: 5px;
       color: #81c784;
       text-decoration: underline;
     }
-
     #input-area {
       display: flex;
       padding: 12px 15px;
@@ -72,7 +43,6 @@
       border-top: 1px solid #3a553a;
       gap: 10px;
     }
-
     #msg-input {
       flex-grow: 1;
       padding: 10px 15px;
@@ -81,7 +51,6 @@
       color: #c1d8c1;
       border: none;
     }
-
     #send-btn {
       background: #4caf50;
       border: none;
@@ -91,7 +60,6 @@
       border-radius: 25px;
       cursor: pointer;
     }
-
     #attach-btn {
       font-size: 1.5rem;
       background: none;
@@ -99,7 +67,6 @@
       color: #4caf50;
       cursor: pointer;
     }
-
     .hidden-file-input {
       display: none;
     }
@@ -107,7 +74,7 @@
 </head>
 <body>
 
-<h2>Чат <a href="/logout">Выход</a></h2>
+<h2>Чат с файлами через Supabase</h2>
 
 <div id="messages" role="log" aria-live="polite"></div>
 
@@ -119,44 +86,50 @@
 <input type="file" id="file-input" class="hidden-file-input" />
 
 <script>
-  const socket = io();
+  const SUPABASE_URL = 'https://lbppkscrjvjzcjalwkg.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxicHBrc2NyanZ6ampjYWx3a2d1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4Mjg0NjYsImV4cCI6MjA2ODQwNDQ2Nn0.hAWeui-XHDNZnDsJxLPtuNHHwhVG7ZD9USTX59zo85c';
+  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
   const messagesDiv = document.getElementById('messages');
   const input = document.getElementById('msg-input');
   const sendBtn = document.getElementById('send-btn');
   const attachBtn = document.getElementById('attach-btn');
   const fileInput = document.getElementById('file-input');
 
-  const SUPABASE_URL = 'https://lbppkscrjvjzcjalwkg.supabase.co';
-  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxicHBrc2NyanZ6ampjYWx3a2d1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4Mjg0NjYsImV4cCI6MjA2ODQwNDQ2Nn0.hAWeui-XHDNZnDsJxLPtuNHHwhVG7ZD9USTX59zo85c';
-  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  // Имя пользователя - для простоты
+  const username = 'Вы';
 
-  let userStatuses = {};
+  async function loadMessages() {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .order('created_at', { ascending: true })
+      .limit(100);
+
+    if (error) {
+      console.error('Ошибка загрузки сообщений:', error);
+      return;
+    }
+
+    messagesDiv.innerHTML = '';
+    data.forEach(addMessage);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  }
 
   function addMessage(msg) {
     const div = document.createElement('div');
     div.className = 'message';
 
-    const status = document.createElement('span');
-    status.className = 'status-indicator ' + (userStatuses[msg.user] === 'online' ? 'online' : 'offline');
+    const usernameSpan = document.createElement('span');
+    usernameSpan.className = 'username';
+    usernameSpan.textContent = msg.user;
 
-    const username = document.createElement('span');
-    username.className = 'username';
-    username.textContent = msg.user;
+    div.appendChild(usernameSpan);
 
-    const reply = document.createElement('span');
-    reply.className = 'reply-btn';
-    reply.textContent = '[Ответить]';
-    reply.onclick = () => {
-      input.value = '@' + msg.user + ', ';
-      input.focus();
-    };
-
-    div.append(status, username, reply);
-
-    if (msg.file) {
-      const fileUrl = msg.file.data;
-      const fileType = msg.file.type || '';
-      const fileName = msg.file.name;
+    if (msg.file_url) {
+      const fileUrl = msg.file_url;
+      const fileName = msg.file_name;
+      const fileType = msg.file_type;
 
       if (fileType.startsWith('image/')) {
         const a = document.createElement('a');
@@ -191,29 +164,29 @@
         div.append(document.createTextNode(': '), a);
       }
     } else {
-      const text = document.createElement('span');
-      text.className = 'message-text';
-      text.textContent = ': ' + msg.text;
-      div.append(text);
+      const textSpan = document.createElement('span');
+      textSpan.textContent = ': ' + msg.text;
+      div.appendChild(textSpan);
     }
 
     messagesDiv.appendChild(div);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
   }
 
-  socket.on('user_statuses', s => userStatuses = s);
-  socket.on('load_messages', msgs => {
-    messagesDiv.innerHTML = '';
-    msgs.forEach(addMessage);
-  });
-  socket.on('new_message', addMessage);
-  socket.on('new_file', addMessage);
-
-  sendBtn.onclick = () => {
+  sendBtn.onclick = async () => {
     const text = input.value.trim();
     if (!text) return;
-    socket.emit('send_message', { text });
+
+    const { error } = await supabase
+      .from('messages')
+      .insert([{ user: username, text, created_at: new Date().toISOString() }]);
+
+    if (error) {
+      alert('Ошибка отправки сообщения: ' + error.message);
+      return;
+    }
+
     input.value = '';
+    loadMessages();
   };
 
   input.addEventListener('keydown', e => {
@@ -231,21 +204,37 @@
 
     const path = `chat/${Date.now()}_${file.name}`;
     const { data, error } = await supabase.storage.from('bucket').upload(path, file);
-    if (error) return alert('Ошибка загрузки файла: ' + error.message);
+    if (error) {
+      alert('Ошибка загрузки файла: ' + error.message);
+      return;
+    }
 
-    const publicUrl = supabase.storage.from('bucket').getPublicUrl(data.path).data.publicUrl;
+    const { data: publicUrlData } = supabase.storage.from('bucket').getPublicUrl(path);
+    const file_url = publicUrlData.publicUrl;
 
-    socket.emit('new_file', {
-      user: 'Вы',
-      file: {
-        name: file.name,
-        type: file.type,
-        data: publicUrl
-      }
-    });
+    const { error: insertError } = await supabase
+      .from('messages')
+      .insert([{
+        user: username,
+        text: '',
+        file_url,
+        file_name: file.name,
+        file_type: file.type,
+        created_at: new Date().toISOString()
+      }]);
+
+    if (insertError) {
+      alert('Ошибка отправки файла: ' + insertError.message);
+      return;
+    }
 
     fileInput.value = '';
+    loadMessages();
   });
+
+  // Загрузка сообщений каждые 2 секунды (polling)
+  setInterval(loadMessages, 2000);
+  loadMessages();
 </script>
 
 </body>
