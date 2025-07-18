@@ -3,167 +3,157 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Регистрация и Вход</title>
+  <title>Вход и Регистрация</title>
   <style>
+    :root {
+      --bg: #121212;
+      --card: #1e1e1e;
+      --text: #e0e0e0;
+      --accent: #03DAC6;
+      --error: #cf6679;
+    }
+
     body {
-      font-family: Verdana, Arial, sans-serif;
-      background: #f4f4f4;
-      color: #333;
-      margin: 40px auto;
-      max-width: 400px;
-      padding: 10px;
-      border: 1px solid #ccc;
-      background-image: linear-gradient(to bottom, #ffffff, #e5e5e5);
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 16px;
     }
 
     h2 {
-      color: #000080;
-      margin-bottom: 15px;
       text-align: center;
-      font-size: 22px;
-      text-shadow: 1px 1px 0 #ccc;
+      color: var(--accent);
+      font-size: 1.4rem;
+      margin-bottom: 1rem;
+    }
+
+    #tabs {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    #tabs button {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      background-color: var(--card);
+      color: var(--text);
+      font-weight: bold;
+      border-radius: 8px;
+      transition: background 0.3s;
+    }
+
+    #tabs button.active {
+      background-color: var(--accent);
+      color: #000;
     }
 
     form {
-      background: #ffffff;
-      border: 1px solid #bbb;
-      border-radius: 6px;
-      padding: 25px 20px;
-      margin-bottom: 30px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      background-color: var(--card);
+      border-radius: 12px;
+      padding: 24px 20px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+      margin-bottom: 24px;
     }
 
     label {
       display: block;
-      margin-top: 15px;
-      font-weight: 600;
+      margin-top: 18px;
       font-size: 0.95rem;
+      color: #bbb;
     }
 
-    input[type="text"], input[type="password"] {
+    input[type="text"],
+    input[type="password"] {
       width: 100%;
-      padding: 10px 12px;
-      margin-top: 6px;
-      border: 1px solid #aaa;
-      border-radius: 4px;
-      background: #fdfdfd;
-      color: #333;
-      box-shadow: inset 0 1px 2px #ccc;
-    }
-
-    input[type="text"]:focus, input[type="password"]:focus {
-      border-color: #6699cc;
-      background: #fff;
-      outline: none;
-    }
-
-    button {
-      margin-top: 25px;
-      padding: 12px 20px;
-      background: linear-gradient(to bottom, #d0e4ff, #a3c4f3);
-      border: 1px solid #6699cc;
-      color: #003366;
-      font-weight: bold;
+      padding: 12px;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background-color: #2a2a2a;
+      color: var(--text);
       font-size: 1rem;
-      border-radius: 4px;
-      cursor: pointer;
+      margin-top: 6px;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      outline: none;
+      background-color: #333;
+    }
+
+    button[type="submit"],
+    .reload-captcha {
+      margin-top: 24px;
+      padding: 14px;
       width: 100%;
-      box-shadow: 0 2px 5px #ccc;
+      background: var(--accent);
+      color: #000;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      box-shadow: 0 2px 6px #000;
+      transition: background 0.2s;
     }
 
     button:hover {
-      background: linear-gradient(to bottom, #a3c4f3, #d0e4ff);
+      opacity: 0.9;
+    }
+
+    .reload-captcha {
+      width: auto;
+      margin-top: 12px;
+      padding: 10px 16px;
     }
 
     #captcha-box {
-      margin-top: 15px;
-      font-weight: bold;
-      font-size: 22px;
+      font-family: monospace;
+      font-size: 1.4rem;
       letter-spacing: 4px;
-      background-color: #f0f0f0;
-      color: #333;
-      padding: 10px 14px;
-      user-select: none;
+      background-color: #2d2d2d;
+      padding: 12px 16px;
+      margin-top: 16px;
+      border-radius: 6px;
       display: inline-block;
-      border-radius: 4px;
-      border: 1px solid #999;
-      font-family: 'Courier New', Courier, monospace;
-      text-shadow: 1px 1px 0 #ccc;
+      user-select: none;
+      text-align: center;
     }
 
-    #captcha-box + button {
-      margin-left: 10px;
-      padding: 6px 12px;
-      font-size: 0.9rem;
-      border: 1px solid #aaa;
-      border-radius: 4px;
-      background: linear-gradient(to bottom, #e8f0ff, #c6dbf3);
-      color: #003366;
-      cursor: pointer;
-    }
-
-    #captcha-box + button:hover {
-      background: linear-gradient(to bottom, #c6dbf3, #e8f0ff);
+    #login-message,
+    #register-message {
+      text-align: center;
+      margin-top: 16px;
+      font-size: 0.95rem;
+      color: var(--error);
+      min-height: 22px;
     }
 
     .hidden {
       display: none;
     }
 
-    #tabs {
-      text-align: center;
-      margin-bottom: 30px;
-    }
-
-    #tabs button {
-      margin-right: 10px;
-      padding: 10px 16px;
-      font-weight: bold;
-      font-size: 1rem;
-      background: #e0e0e0;
-      border: 1px solid #aaa;
-      border-radius: 4px;
-      cursor: pointer;
-      color: #003366;
-    }
-
-    #tabs button:hover {
-      background: #c0d4f0;
-    }
-
-    #tabs button.active {
-      background: #a3c4f3;
-      color: #003366;
-      cursor: default;
-      border: 1px solid #6699cc;
-    }
-
-    #login-message, #register-message {
-      margin-top: 15px;
-      font-weight: bold;
-      font-size: 0.95rem;
-      color: #d9534f;
-      text-align: center;
-      min-height: 22px;
-    }
-
-    /* Responsive */
-    @media screen and (max-width: 480px) {
+    @media (max-width: 480px) {
       body {
-        width: 95%;
+        padding: 12px;
       }
 
       form {
-        padding: 20px;
+        padding: 18px 16px;
       }
 
-      input[type="text"], input[type="password"], button {
-        font-size: 14px;
-        padding: 8px 12px;
+      #tabs {
+        flex-direction: column;
+        gap: 8px;
       }
 
-      #tabs button {
-        padding: 8px 12px;
+      button {
+        font-size: 0.95rem;
+      }
+
+      input {
         font-size: 0.95rem;
       }
     }
@@ -171,126 +161,124 @@
 </head>
 <body>
 
-<div id="tabs">
-  <button id="btn-login" onclick="showForm('login')">Вход</button>
-  <button id="btn-register" onclick="showForm('register')">Регистрация</button>
-</div>
-
-<form id="login-form">
-  <h2>Вход</h2>
-  <label>Имя пользователя:
-    <input type="text" id="login-username" required autocomplete="username" />
-  </label>
-  <label>Пароль:
-    <input type="password" id="login-password" required autocomplete="current-password" />
-  </label>
-  <button type="submit">Войти</button>
-  <div id="login-message"></div>
-</form>
-
-<form id="register-form" class="hidden">
-  <h2>Регистрация</h2>
-  <label>Имя пользователя:
-    <input type="text" id="reg-username" required autocomplete="username" />
-  </label>
-  <label>Пароль:
-    <input type="password" id="reg-password" required autocomplete="new-password" />
-  </label>
-
-  <div style="margin-top: 20px; text-align: center;">
-    <div>
-      Капча: <span id="captcha-box"></span>
-      <button type="button" onclick="loadCaptcha()">Обновить</button>
-    </div>
-    <label style="margin-top: 10px; display: block;">
-      Введите капчу:
-      <input type="text" id="captcha-input" required autocomplete="off" style="margin-top:5px;" />
-    </label>
+  <div id="tabs">
+    <button id="btn-login" onclick="showForm('login')">Вход</button>
+    <button id="btn-register" onclick="showForm('register')">Регистрация</button>
   </div>
 
-  <button type="submit">Зарегистрироваться</button>
-  <div id="register-message"></div>
-</form>
+  <form id="login-form">
+    <h2>Вход</h2>
+    <label>Имя пользователя:
+      <input type="text" id="login-username" required autocomplete="username" />
+    </label>
+    <label>Пароль:
+      <input type="password" id="login-password" required autocomplete="current-password" />
+    </label>
+    <button type="submit">Войти</button>
+    <div id="login-message"></div>
+  </form>
 
-<script>
-  function clearMessages() {
-    document.getElementById('login-message').innerText = '';
-    document.getElementById('register-message').innerText = '';
-  }
+  <form id="register-form" class="hidden">
+    <h2>Регистрация</h2>
+    <label>Имя пользователя:
+      <input type="text" id="reg-username" required autocomplete="username" />
+    </label>
+    <label>Пароль:
+      <input type="password" id="reg-password" required autocomplete="new-password" />
+    </label>
 
-  function showForm(form) {
-    document.getElementById('login-form').classList.toggle('hidden', form !== 'login');
-    document.getElementById('register-form').classList.toggle('hidden', form !== 'register');
-    clearMessages();
-    localStorage.setItem('selectedForm', form);
-    document.getElementById('btn-login').classList.toggle('active', form === 'login');
-    document.getElementById('btn-register').classList.toggle('active', form === 'register');
-  }
+    <div style="margin-top: 20px;">
+      <div>Капча:</div>
+      <div id="captcha-box">------</div>
+      <button class="reload-captcha" type="button" onclick="loadCaptcha()">Обновить</button>
+      <label>Введите капчу:
+        <input type="text" id="captcha-input" required autocomplete="off" />
+      </label>
+    </div>
 
-  window.addEventListener('DOMContentLoaded', () => {
-    const savedForm = localStorage.getItem('selectedForm') || 'login';
-    showForm(savedForm);
-    loadCaptcha();
-  });
+    <button type="submit">Зарегистрироваться</button>
+    <div id="register-message"></div>
+  </form>
 
-  async function loadCaptcha() {
-    try {
-      const response = await fetch('/generate_captcha', { credentials: 'include' });
-      if (!response.ok) throw new Error('Ошибка загрузки капчи');
-      const data = await response.json();
-      document.getElementById('captcha-box').innerText = data.captcha;
-      document.getElementById('captcha-input').value = '';
+  <script>
+    function clearMessages() {
+      document.getElementById('login-message').innerText = '';
       document.getElementById('register-message').innerText = '';
-    } catch (err) {
-      document.getElementById('register-message').innerText = err.message;
     }
-  }
 
-  document.getElementById('register-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const username = document.getElementById('reg-username').value.trim();
-    const password = document.getElementById('reg-password').value.trim();
-    const captcha = document.getElementById('captcha-input').value.trim();
+    function showForm(form) {
+      document.getElementById('login-form').classList.toggle('hidden', form !== 'login');
+      document.getElementById('register-form').classList.toggle('hidden', form !== 'register');
+      clearMessages();
+      localStorage.setItem('selectedForm', form);
+      document.getElementById('btn-login').classList.toggle('active', form === 'login');
+      document.getElementById('btn-register').classList.toggle('active', form === 'register');
+    }
 
-    try {
-      const res = await fetch('/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ username, password, captcha })
-      });
-      const data = await res.json();
-      document.getElementById('register-message').innerText = data.message;
-      if (res.ok) {
-        window.location.href = '/chat.html';
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedForm = localStorage.getItem('selectedForm') || 'login';
+      showForm(savedForm);
+      loadCaptcha();
+    });
+
+    async function loadCaptcha() {
+      try {
+        const response = await fetch('/generate_captcha', { credentials: 'include' });
+        if (!response.ok) throw new Error('Ошибка загрузки капчи');
+        const data = await response.json();
+        document.getElementById('captcha-box').innerText = data.captcha;
+        document.getElementById('captcha-input').value = '';
+        document.getElementById('register-message').innerText = '';
+      } catch (err) {
+        document.getElementById('register-message').innerText = err.message;
       }
-    } catch {
-      document.getElementById('register-message').innerText = 'Ошибка регистрации';
     }
-  });
 
-  document.getElementById('login-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const username = document.getElementById('login-username').value.trim();
-    const password = document.getElementById('login-password').value.trim();
+    document.getElementById('register-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const username = document.getElementById('reg-username').value.trim();
+      const password = document.getElementById('reg-password').value.trim();
+      const captcha = document.getElementById('captcha-input').value.trim();
 
-    try {
-      const res = await fetch('/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ username, password })
-      });
-      const data = await res.json();
-      document.getElementById('login-message').innerText = data.message;
-      if (res.ok) {
-        window.location.href = '/chat.html';
+      try {
+        const res = await fetch('/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ username, password, captcha })
+        });
+        const data = await res.json();
+        document.getElementById('register-message').innerText = data.message;
+        if (res.ok) {
+          window.location.href = '/chat.html';
+        }
+      } catch {
+        document.getElementById('register-message').innerText = 'Ошибка регистрации';
       }
-    } catch {
-      document.getElementById('login-message').innerText = 'Ошибка входа';
-    }
-  });
-</script>
+    });
+
+    document.getElementById('login-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value.trim();
+
+      try {
+        const res = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        document.getElementById('login-message').innerText = data.message;
+        if (res.ok) {
+          window.location.href = '/chat.html';
+        }
+      } catch {
+        document.getElementById('login-message').innerText = 'Ошибка входа';
+      }
+    });
+  </script>
 
 </body>
 </html>
