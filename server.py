@@ -1,38 +1,26 @@
 import os
-import random
-import string
 from flask import Flask, render_template, request, redirect, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_session import Session
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
+from supabase import create_client
 from gevent import monkey
 
 monkey.patch_all()
 
+# Инициализация приложения Flask
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'supersecretkey')
 
-# ✅ Лимит файла — 1 ГБ
-app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024  # 1 GB
+# Настройка подключения к Supabase
+SUPABASE_URL = 'https://your-project-id.supabase.co'  # Заменить на свой URL
+SUPABASE_KEY = 'your-supabase-api-key'  # Заменить на свой API ключ
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# База данных
-DATABASE_URL = os.environ.get('DATABASE_URL')
-if not DATABASE_URL:
-    print("WARNING: DATABASE_URL not set, using local SQLite database.")
-    DATABASE_URL = 'sqlite:///chat.db'
-
-if DATABASE_URL.startswith('postgresql://') and '+psycopg2' not in DATABASE_URL:
-    DATABASE_URL = DATABASE_URL.replace('postgresql://', 'postgresql+psycopg2://')
-
-if 'sslmode' not in DATABASE_URL:
-    if '?' in DATABASE_URL:
-        DATABASE_URL += '&sslmode=require'
-    else:
-        DATABASE_URL += '?sslmode=require'
-
-app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+# Настройка SQLAlchemy для Supabase (PostgreSQL)
+app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://postgres:{SUPABASE_KEY}@{SUPABASE_URL}/postgres'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SESSION_TYPE'] = 'filesystem'
 
@@ -42,11 +30,12 @@ db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 socketio = SocketIO(app, async_mode='gevent', cors_allowed_origins="*")
 
-# Хранит имена пользователей, которые сейчас онлайн
+# Хранение пользователей, которые сейчас онлайн
 online_users = set()
 
-# Модели
+# Модели данных
 class User(db.Model):
+    __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
@@ -58,11 +47,12 @@ class User(db.Model):
         return bcrypt.check_password_hash(self.password_hash, password)
 
 class Message(db.Model):
+    __tablename__ = 'messages'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     content = db.Column(db.Text, nullable=False)
 
-# Инициализация таблиц
+# Инициализация таблиц в базе данных
 try:
     with app.app_context():
         db.create_all()
@@ -70,14 +60,14 @@ try:
 except Exception as e:
     print("❌ Error during database initialization:", e)
 
-# 📌 Роуты
+# Роуты для регистрации и входа
 @app.route('/')
 def index():
     if 'user_id' in session:
         return redirect('/chat.html')
     return redirect('/login')
 
-@app.route('/login', methods=['GET', 'POST'])
+@app.route('/login', methods=['POST', 'GET'])
 def login():
     if request.method == 'POST':
         data = request.get_json()
@@ -95,32 +85,24 @@ def register():
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
-    captcha = data.get('captcha')
-
-    if 'captcha' not in session or captcha.upper() != session['captcha']:
-        return jsonify({'message': 'Неверная капча'}), 400
 
     if User.query.filter_by(username=username).first():
-        return jsonify({'message': 'Имя пользователя занято'}), 409
+        return jsonify({'message': 'Username already taken'}), 409
 
     user = User(username=username)
     user.set_password(password)
     db.session.add(user)
     db.session.commit()
+
     session['user_id'] = user.id
-    return jsonify({'message': 'Успешная регистрация'}), 200
+    return jsonify({'message': 'Registration successful'}), 200
 
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect('/login')
 
-@app.route('/generate_captcha')
-def generate_captcha():
-    captcha = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-    session['captcha'] = captcha
-    return jsonify({'captcha': captcha})
-
+# Роут для чата
 @app.route('/chat.html')
 def chat_page():
     if 'user_id' not in session:
@@ -145,10 +127,7 @@ def handle_connect():
     socketio.emit('user_statuses', {u: 'online' for u in online_users})
 
     messages = Message.query.order_by(Message.id.asc()).all()
-    emit('load_messages', [
-        {'user': User.query.get(m.user_id).username, 'text': m.content}
-        for m in messages
-    ])
+    emit('load_messages', [{'user': User.query.get(m.user_id).username, 'text': m.content} for m in messages])
 
 @socketio.on('disconnect')
 def handle_disconnect():
@@ -159,9 +138,7 @@ def handle_disconnect():
     if not user:
         return
 
-    # Убираем пользователя из онлайн
     online_users.discard(user.username)
-    # Отправляем обновление статусов всем
     socketio.emit('user_statuses', {u: 'online' for u in online_users})
 
 @socketio.on('send_message')
@@ -178,7 +155,6 @@ def handle_send_message(data):
     if not text:
         return
 
-    # Удалить самое старое сообщение, если в базе уже 50
     total_messages = Message.query.count()
     if total_messages >= 50:
         oldest = Message.query.order_by(Message.id.asc()).first()
@@ -186,12 +162,10 @@ def handle_send_message(data):
             db.session.delete(oldest)
             db.session.commit()
 
-    # Добавляем новое сообщение
     msg = Message(user_id=user.id, content=text)
     db.session.add(msg)
     db.session.commit()
 
-    # Рассылаем клиентам
     emit('new_message', {'user': user.username, 'text': text}, broadcast=True)
 
 @socketio.on('send_file')
@@ -210,10 +184,18 @@ def handle_send_file(data):
     if not filename or not filedata:
         return
 
+    # Загружаем файл в Supabase Storage
+    bucket = supabase.storage.from_('bucket')
+    path = f"chat/{filename}"
+    result = bucket.upload(path, filedata)
+
+    # Получаем публичный URL для скачивания
+    public_url = bucket.get_public_url(path).data['publicUrl']
+
     emit('new_file', {
         'user': user.username,
         'filename': filename,
-        'filedata': filedata
+        'filedata': public_url
     }, broadcast=True)
 
 # ▶️ Запуск
