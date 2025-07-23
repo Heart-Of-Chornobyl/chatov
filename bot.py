@@ -1,6 +1,6 @@
-from telegram.ext import ApplicationBuilder, CommandHandler
 import os
 import asyncio
+from telegram.ext import Application, CommandHandler
 
 BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
@@ -8,7 +8,8 @@ async def start(update, context):
     await update.message.reply_text("Привет! Бот работает.")
 
 async def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    # Создаём приложение напрямую, без ApplicationBuilder
+    app = Application(token=BOT_TOKEN)
 
     app.add_handler(CommandHandler("start", start))
 
