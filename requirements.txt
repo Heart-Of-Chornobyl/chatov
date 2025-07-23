@@ -1,4 +1,5 @@
-aiogram==3.*
+aiogram==2.25.1
 aiohttp
 gunicorn
+googletrans==4.0.0-rc1
 replicate
