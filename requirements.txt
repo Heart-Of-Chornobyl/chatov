@@ -1,1 +1,3 @@
 python-telegram-bot==13.15
+certifi
+tornado==6.1
