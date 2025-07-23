@@ -1,5 +1,5 @@
 aiogram==2.25.1
-aiohttp
-gunicorn
-replicate
+aiohttp==3.9.5
 googletrans==4.0.0-rc1
+replicate
+gunicorn
