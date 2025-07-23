@@ -1,10 +1,8 @@
 services:
   - type: web
-    name: aiogram-bot
+    name: chatov
     env: python
     plan: free
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "python bot.py"
-    envVars:
-      - key: BOT_TOKEN
-        sync: false
+    startCommand: "gunicorn bot:app"
+    pythonVersion: 3.11.9
