@@ -1,9 +1,4 @@
-flask
-flask-socketio
-flask-sqlalchemy
-flask-bcrypt
-Flask-Session
-gevent  # Используем gevent вместо eventlet
-gunicorn
-flask-cors
-psycopg2-binary
+aiogram
+replicate
+googletrans==4.0.0-rc1
+aiohttp
