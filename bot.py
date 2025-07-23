@@ -1,139 +1,155 @@
 import os
 import replicate
-from aiogram import Bot, Dispatcher, types
-from aiogram.utils import executor
+import aiohttp
+import asyncio
+from aiogram import Bot, Dispatcher, types, F
+from aiogram.filters import CommandStart
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from googletrans import Translator
-import aiohttp
 
+# Получаем токены из окружения
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 REPLICATE_TOKEN = os.getenv("REPLICATE_TOKEN")
 
 bot = Bot(token=TELEGRAM_TOKEN)
-dp = Dispatcher(bot)
+dp = Dispatcher()
 translator = Translator()
 
-# Тексты для разных языков
+# Словарь переводов для популярных языков
 texts = {
     "en": {
-        "greeting": "👋 Hello! I'm your photo enhancer bot. Choose an option:",
-        "menu": "📌 Main menu:",
-        "btn_improve": "📸 Enhance Photo",
-        "btn_help": "❓ Help",
-        "btn_about": "ℹ About",
-        "help": "Send me a photo, and I will enhance it using AI.",
-        "about": "I am a bot that improves photo quality using AI models.",
-        "processing": "⏳ Processing your photo...",
-        "done": "✅ Here is your enhanced photo!",
-        "error": "❌ Something went wrong."
+        "greeting": "Hello! 👋\nSend me a photo to improve it or use the menu below.",
+        "processing": "Processing your photo...",
+        "done": "Here is your improved photo! ✅",
+        "error": "Something went wrong. ❌",
+        "menu": "Choose an option:",
+        "btn_send": "🖼 Send Photo",
+        "btn_lang": "🌍 Change Language",
+        "btn_info": "ℹ Info",
+        "choose_lang": "Select your language:",
+        "info": "I use AI to enhance your photos!"
     },
     "uk": {
-        "greeting": "👋 Привіт! Я бот для покращення фото. Обери опцію:",
-        "menu": "📌 Головне меню:",
-        "btn_improve": "📸 Покращити фото",
-        "btn_help": "❓ Допомога",
-        "btn_about": "ℹ Про бота",
-        "help": "Надішли мені фото, і я покращу його за допомогою AI.",
-        "about": "Я бот, що покращує якість зображень за допомогою AI.",
-        "processing": "⏳ Обробляю твоє фото...",
-        "done": "✅ Ось твоє покращене фото!",
-        "error": "❌ Щось пішло не так."
+        "greeting": "Привіт! 👋\nНадішли фото для покращення або скористайся меню нижче.",
+        "processing": "Обробляю твоє фото...",
+        "done": "Ось твоє покращене фото! ✅",
+        "error": "Щось пішло не так. ❌",
+        "menu": "Вибери опцію:",
+        "btn_send": "🖼 Надіслати фото",
+        "btn_lang": "🌍 Змінити мову",
+        "btn_info": "ℹ Інформація",
+        "choose_lang": "Вибери мову:",
+        "info": "Я використовую AI для покращення фото!"
     },
     "ru": {
-        "greeting": "👋 Привет! Я бот для улучшения фото. Выбери опцию:",
-        "menu": "📌 Главное меню:",
-        "btn_improve": "📸 Улучшить фото",
-        "btn_help": "❓ Помощь",
-        "btn_about": "ℹ О боте",
-        "help": "Отправь мне фото, и я улучшу его с помощью AI.",
-        "about": "Я бот, который улучшает фото с помощью AI.",
-        "processing": "⏳ Обрабатываю фото...",
-        "done": "✅ Вот твоё улучшенное фото!",
-        "error": "❌ Что-то пошло не так."
+        "greeting": "Привет! 👋\nОтправь фото для улучшения или воспользуйся меню ниже.",
+        "processing": "Обрабатываю фото...",
+        "done": "Вот твоё улучшенное фото! ✅",
+        "error": "Что-то пошло не так. ❌",
+        "menu": "Выбери опцию:",
+        "btn_send": "🖼 Отправить фото",
+        "btn_lang": "🌍 Сменить язык",
+        "btn_info": "ℹ Инфо",
+        "choose_lang": "Выбери язык:",
+        "info": "Я использую AI для улучшения фото!"
     },
     "pl": {
-        "greeting": "👋 Cześć! Jestem botem do poprawy zdjęć. Wybierz opcję:",
-        "menu": "📌 Główne menu:",
-        "btn_improve": "📸 Popraw zdjęcie",
-        "btn_help": "❓ Pomoc",
-        "btn_about": "ℹ O bocie",
-        "help": "Wyślij mi zdjęcie, a poprawię je za pomocą AI.",
-        "about": "Jestem botem, który poprawia zdjęcia dzięki AI.",
-        "processing": "⏳ Przetwarzam zdjęcie...",
-        "done": "✅ Oto twoje ulepszone zdjęcie!",
-        "error": "❌ Coś poszło nie tak."
-    },
-    "cs": {
-        "greeting": "👋 Ahoj! Jsem bot na vylepšení fotek. Vyber možnost:",
-        "menu": "📌 Hlavní menu:",
-        "btn_improve": "📸 Vylepšit fotku",
-        "btn_help": "❓ Nápověda",
-        "btn_about": "ℹ O botovi",
-        "help": "Pošli mi fotku a vylepším ji pomocí AI.",
-        "about": "Jsem bot, který vylepšuje fotky pomocí AI.",
-        "processing": "⏳ Zpracovávám fotku...",
-        "done": "✅ Tady je tvoje vylepšená fotka!",
-        "error": "❌ Něco se pokazilo."
+        "greeting": "Cześć! 👋\nWyślij zdjęcie do poprawy lub użyj menu poniżej.",
+        "processing": "Przetwarzam twoje zdjęcie...",
+        "done": "Oto twoje ulepszone zdjęcie! ✅",
+        "error": "Coś poszło nie tak. ❌",
+        "menu": "Wybierz opcję:",
+        "btn_send": "🖼 Wyślij zdjęcie",
+        "btn_lang": "🌍 Zmień język",
+        "btn_info": "ℹ Info",
+        "choose_lang": "Wybierz język:",
+        "info": "Używam AI do ulepszania zdjęć!"
     },
     "de": {
-        "greeting": "👋 Hallo! Ich bin ein Bot zur Fotoverbesserung. Wähle eine Option:",
-        "menu": "📌 Hauptmenü:",
-        "btn_improve": "📸 Foto verbessern",
-        "btn_help": "❓ Hilfe",
-        "btn_about": "ℹ Über Bot",
-        "help": "Schick mir ein Foto und ich verbessere es mit KI.",
-        "about": "Ich bin ein Bot, der Fotos mit KI verbessert.",
-        "processing": "⏳ Verarbeite dein Foto...",
-        "done": "✅ Hier ist dein verbessertes Foto!",
-        "error": "❌ Etwas ist schiefgelaufen."
+        "greeting": "Hallo! 👋\nSchick mir ein Foto oder nutze das Menü unten.",
+        "processing": "Verarbeite dein Foto...",
+        "done": "Hier ist dein verbessertes Foto! ✅",
+        "error": "Etwas ist schiefgelaufen. ❌",
+        "menu": "Wähle eine Option:",
+        "btn_send": "🖼 Foto senden",
+        "btn_lang": "🌍 Sprache ändern",
+        "btn_info": "ℹ Info",
+        "choose_lang": "Wähle deine Sprache:",
+        "info": "Ich nutze KI, um deine Fotos zu verbessern!"
     }
 }
 
-def get_text(lang, key):
+# Память для выбранных языков
+user_lang = {}
+
+def get_text(user_id, key, fallback="en"):
+    lang = user_lang.get(user_id, fallback)
     return texts.get(lang, texts["en"]).get(key, key)
 
-def get_menu(lang):
-    return InlineKeyboardMarkup().add(
-        InlineKeyboardButton(get_text(lang, "btn_improve"), callback_data="improve"),
-        InlineKeyboardButton(get_text(lang, "btn_help"), callback_data="help"),
-        InlineKeyboardButton(get_text(lang, "btn_about"), callback_data="about")
-    )
+# Главное меню
+def main_menu(user_id):
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=get_text(user_id, "btn_send"), callback_data="send_photo")],
+        [InlineKeyboardButton(text=get_text(user_id, "btn_lang"), callback_data="change_lang")],
+        [InlineKeyboardButton(text=get_text(user_id, "btn_info"), callback_data="info")]
+    ])
 
-@dp.message_handler(commands=["start"])
+# Выбор языка
+def language_menu():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🇬🇧 English", callback_data="lang_en")],
+        [InlineKeyboardButton(text="🇺🇦 Українська", callback_data="lang_uk")],
+        [InlineKeyboardButton(text="🇷🇺 Русский", callback_data="lang_ru")],
+        [InlineKeyboardButton(text="🇵🇱 Polski", callback_data="lang_pl")],
+        [InlineKeyboardButton(text="🇩🇪 Deutsch", callback_data="lang_de")]
+    ])
+
+# Старт
+@dp.message(CommandStart())
 async def start_cmd(message: types.Message):
-    lang = message.from_user.language_code if message.from_user.language_code else "en"
-    await message.answer(get_text(lang, "greeting"), reply_markup=get_menu(lang))
+    lang = message.from_user.language_code or "en"
+    if lang not in texts:
+        lang = "en"
+    user_lang[message.from_user.id] = lang
+    await message.answer(get_text(message.from_user.id, "greeting"), reply_markup=main_menu(message.from_user.id))
 
-@dp.callback_query_handler(lambda c: c.data in ["help", "about", "improve"])
-async def menu_callback(callback_query: types.CallbackQuery):
-    lang = callback_query.from_user.language_code if callback_query.from_user.language_code else "en"
+# Обработка колбэков меню
+@dp.callback_query(F.data == "change_lang")
+async def change_language(callback: types.CallbackQuery):
+    await callback.message.edit_text(get_text(callback.from_user.id, "choose_lang"), reply_markup=language_menu())
 
-    if callback_query.data == "help":
-        await callback_query.message.edit_text(get_text(lang, "help"), reply_markup=get_menu(lang))
-    elif callback_query.data == "about":
-        await callback_query.message.edit_text(get_text(lang, "about"), reply_markup=get_menu(lang))
-    elif callback_query.data == "improve":
-        await callback_query.message.edit_text(get_text(lang, "menu") + "\n📸 " + get_text(lang, "btn_improve"),
-                                               reply_markup=get_menu(lang))
+@dp.callback_query(F.data.startswith("lang_"))
+async def set_language(callback: types.CallbackQuery):
+    lang_code = callback.data.split("_")[1]
+    user_lang[callback.from_user.id] = lang_code
+    await callback.message.edit_text(get_text(callback.from_user.id, "greeting"), reply_markup=main_menu(callback.from_user.id))
 
-@dp.message_handler(content_types=["photo"])
+@dp.callback_query(F.data == "info")
+async def info_cmd(callback: types.CallbackQuery):
+    await callback.answer(get_text(callback.from_user.id, "info"), show_alert=True)
+
+# Приём фото
+@dp.message(F.photo)
 async def handle_photo(message: types.Message):
-    lang = message.from_user.language_code if message.from_user.language_code else "en"
-    await message.answer(get_text(lang, "processing"))
+    await message.answer(get_text(message.from_user.id, "processing"))
 
+    # Получаем фото
     photo = message.photo[-1]
     file_info = await bot.get_file(photo.file_id)
     file_url = f"https://api.telegram.org/file/bot{TELEGRAM_TOKEN}/{file_info.file_path}"
 
     try:
+        # Скачиваем фото
         async with aiohttp.ClientSession() as session:
             async with session.get(file_url) as resp:
                 img_bytes = await resp.read()
 
+        # Сохраняем временно
         img_path = "temp.jpg"
         with open(img_path, "wb") as f:
             f.write(img_bytes)
 
+        # Обрабатываем через Replicate
         client = replicate.Client(api_token=REPLICATE_TOKEN)
         output = client.run(
             "tencentarc/gfpgan:latest",
@@ -141,11 +157,14 @@ async def handle_photo(message: types.Message):
         )
 
         improved_img_url = output[0]
-        await message.answer_photo(improved_img_url, caption=get_text(lang, "done"), reply_markup=get_menu(lang))
-
+        await message.answer_photo(improved_img_url, caption=get_text(message.from_user.id, "done"))
     except Exception as e:
-        await message.answer(get_text(lang, "error"))
+        await message.answer(get_text(message.from_user.id, "error"))
         print(e)
 
+# Запуск
+async def main():
+    await dp.start_polling(bot)
+
 if __name__ == "__main__":
-    executor.start_polling(dp, skip_updates=True)
+    asyncio.run(main())
