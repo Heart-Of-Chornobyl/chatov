@@ -9,11 +9,12 @@ app = Flask(__name__)
 CORS(app)
 
 DB_CONFIG = {
-    'host': os.environ.get('DB_HOST'),
-    'port': int(os.environ.get('DB_PORT', 3306)),
-    'user': os.environ.get('DB_USER'),
-    'password': os.environ.get('DB_PASS'),
-    'database': os.environ.get('DB_NAME'),
+    'host': '31.128.174.187',
+    'port': 3306,
+    'user': 'darkchat',
+    'password': 'StrongPass123!',
+    'database': 'darkchat',
+    'connect_timeout': 5
 }
 
 def get_db_connection():
