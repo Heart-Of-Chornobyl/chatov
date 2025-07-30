@@ -2,8 +2,8 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import os
 import sqlite3
-import hashlib
-import requests  # для перевірки reCAPTCHA
+import requests
+import bcrypt
 
 app = Flask(__name__)
 CORS(app)
@@ -24,12 +24,17 @@ def init_db():
     conn.close()
 
 def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
+    # Хешуємо пароль з bcrypt (повертаємо строку)
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+def check_password(password, hashed):
+    # Перевірка пароля з хешем
+    return bcrypt.checkpw(password.encode(), hashed.encode())
 
 def verify_recaptcha(token):
     secret_key = os.environ.get('RECAPTCHA_SECRET_KEY')
     if not secret_key:
-        # Якщо ключа нема — відмовляємо у проходженні капчі (безпека)
+        # Якщо ключ не встановлений — відмовляємо у проходженні капчі (безпека)
         return False
     payload = {
         'secret': secret_key,
@@ -81,7 +86,7 @@ def login():
     user = c.fetchone()
     conn.close()
 
-    if user and user[0] == hash_password(password):
+    if user and check_password(password, user[0]):
         return jsonify({'success': True, 'message': 'Успішний вхід'}), 200
     else:
         return jsonify({'success': False, 'message': 'Невірний логін або пароль'}), 401
