@@ -200,5 +200,8 @@
     @media (max-width: 480px) {
       .auth-box { padding: 30px 20px; border-radius: 10px; }
       .logo { font-size: 1.6rem; }
+      .grecaptcha-badge {
+          transform: scale(0.7); /* Зменшити до 70% */
+          transform-origin: bottom right; /* Залишаємо точку трансформації у нижньому правому куті */
+            }
     }
-
