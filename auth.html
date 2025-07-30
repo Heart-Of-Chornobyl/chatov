@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dark Chat — Вхід / Реєстрація</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles/auth.css">
+</head>
+<body>
+  <header>
+    <div class="logo" onclick="changeSlogan()">🌙 DarkChat</div>
+    <div class="slogan" id="slogan"></div>
+  </header>
+
+  <div class="auth-box">
+    <div class="toggle-switch">
+      <button id="loginToggle" class="active">Увійти</button>
+      <button id="registerToggle">Реєстрація</button>
+    </div>
+
+    <form id="loginForm" class="form active">
+      <input type="text" placeholder="Логін або email" required />
+      <input type="password" placeholder="Пароль" required />
+      <button type="submit">Увійти</button>
+      <p>Ще без акаунту? <span id="toRegister" style="text-decoration: underline; cursor: pointer;">Реєструйся</span> ☝</p>
+      <p><span id="recoverToggle" style="text-decoration: underline; cursor: pointer;">Відновити доступ</span> 🔐</p>
+      <div class="recover-form" id="recoverForm">
+        <input type="email" placeholder="Введи email для відновлення" />
+        <button type="button">Надіслати</button>
+      </div>
+    </form>
+
+    <form id="registerForm" class="form">
+      <input type="text" placeholder="Логін" required />
+      <input type="email" placeholder="Email" required />
+      <input type="password" placeholder="Пароль" required />
+      <input type="password" placeholder="Повторити пароль" required />
+      <button type="submit">Зареєструватися</button>
+      <p>Уже маєш акаунт? <span id="toLogin" style="text-decoration: underline; cursor: pointer;">Увійди</span> ☝</p>
+    </form>
+  </div>
+
+  <footer>
+    © 2025 DarkChat. Твій нічний простір для спілкування.
+  </footer>
+
+  <script src="js/auth.js"></script>
+</body>
+</html>

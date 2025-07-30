@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🌙 Даркчат</title>
+  <link rel="stylesheet" href="styles/home.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap" rel="stylesheet"/>
+</head>
+<body class="chat-body">
+  <div class="chat-app">
+    <!-- Сайдбар -->
+    <aside class="chat-sidebar">
+      <div class="sidebar-header">
+	<button class="profile-mobile-btn" id="profileMobileBtn">👤</button>
+       <h2>🌙 Даркчат</h2>
+      </div>
+      <ul class="sidebar-menu">
+  <li class="menu-item" data-page="pages/general.html">👥 Загальний чат</li>
+  <li class="menu-item" data-page="pages/private.html">🔒 Приватні діалоги</li>
+  <li class="menu-item" data-page="pages/blog.html">📝 Міні-блог</li>
+  <li class="menu-item" data-page="pages/ai.html">🤖 Тінь (AI)</li>
+  <li class="menu-item" data-page="pages/poll.html">📊 Голосування</li>
+  <li class="menu-item" data-page="pages/profile.html">👤 Профіль</li> <!-- Якщо хочеш — можеш прибрати -->
+  <li class="menu-item" data-page="pages/settings.html">⚙️ Налаштування</li>
+  <li class="menu-item" id="exitBtn">🚪 Вийти</li>
+</ul>
+    </aside>
+
+    <!-- Основний контент -->
+    <div class="chat-main" id="chatMain">
+      <header class="chat-header">
+        <button class="back-btn" id="backBtn">🔙</button>
+        <h1 class="chat-title"></h1>
+        <button class="profile-btn desktop-only" id="profileIcon">👤</button>
+      </header>
+      <div class="chat-messages" id="pageContainer">
+        <div class="welcome-screen" id="welcomeScreen">
+          <div class="welcome-box">
+            🌙 Вітаємо в Даркчаті!<br/>
+            Оберіть розділ із меню зліва.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="chat-footer">
+    <p>© 2025 DarkChat. Твій нічний простір для спілкування.</p>
+  </footer>
+
+  <script src="js/home.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+.emoji-picker {
+  position: absolute;
+  bottom: 64px;
+  right: 10px;
+  width: 320px;
+  max-height: 300px;
+  background: #1b2235;
+  border: 1px solid rgba(62, 166, 255, 0.2);
+  border-radius: 12px;
+  padding: 10px;
+  z-index: 10000;
+  box-shadow: 0 0 20px rgba(62, 166, 255, 0.3);
+  overflow: hidden;
+  display: none;
+  flex-direction: column;
+}
+
+.emoji-picker.show {
+  display: flex;
+}
+
+.emoji-categories {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #2e8bff transparent;
+}
+
+.emoji-categories::-webkit-scrollbar {
+  height: 6px;
+}
+
+.emoji-categories::-webkit-scrollbar-thumb {
+  background: #2e8bff;
+  border-radius: 10px;
+}
+
+.emoji-category-btn {
+  background: #243044;
+  border: 1px solid transparent;
+  color: #a0c4ff;
+  padding: 8px 12px;
+  font-size: 1rem;
+  height: 38px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.emoji-category-btn:hover,
+.emoji-category-btn.active {
+  background: #2e8bff;
+  color: #fff;
+}
+
+.emoji-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #2e8bff transparent;
+}
+
+.emoji-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.emoji-list::-webkit-scrollbar-thumb {
+  background: #2e8bff;
+  border-radius: 10px;
+}
+
+.emoji-item {
+  font-size: 1.5rem;
+  padding: 6px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.emoji-item:hover {
+  transform: scale(1.2);
+}
+
+/* 📱 Мобілки */
+@media (max-width: 768px) {
+  .emoji-picker {
+    right: 10px;
+    left: 10px;
+    width: auto;
+    max-width: none;
+    max-height: 240px;
+  }
+
+  .emoji-categories {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+
+  .emoji-category-btn {
+    font-size: 0.9rem;
+    padding: 6px 10px;
+    height: 36px;
+    flex: none;
+  }
+
+  .emoji-item {
+    font-size: 1.3rem;
+  }
+}
+
+/* 🖥️ Десктоп — категорії розгорнуті (оновлено) */
+@media (min-width: 769px) {
+  .emoji-picker {
+    flex-direction: row;
+    width: 420px;
+    height: 280px;
+    padding: 0;
+    bottom: 70px;
+    right: 20px;
+  }
+
+  .emoji-categories {
+    flex-direction: column;
+    width: 140px;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: none;
+    padding: 8px;
+    gap: 4px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: #1b2235;
+  }
+
+  .emoji-category-btn {
+    width: 100%;
+    padding: 6px 8px;
+    font-size: 0.85rem;
+    text-align: left;
+    height: auto;
+    border-radius: 6px;
+    white-space: nowrap;
+    word-break: normal;
+    line-height: 1.2;
+  }
+
+  .emoji-list {
+    padding: 10px;
+    justify-content: flex-start;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: #1b2235;
+  }
+
+  .emoji-item {
+    font-size: 1.35rem;
+    padding: 5px;
+  }
+}
