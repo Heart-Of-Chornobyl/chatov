@@ -3,7 +3,7 @@ from flask_cors import CORS
 import os
 import sqlite3
 import hashlib
-import requests  # <-- додано
+import requests  # для перевірки reCAPTCHA
 
 app = Flask(__name__)
 CORS(app)
@@ -26,9 +26,8 @@ def init_db():
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-# Додана функція перевірки reCAPTCHA
 def verify_recaptcha(token):
-    secret_key = "6LejYZQrAAAAAK6HU9hHqHFsPWOFDEoLn1_nYqxW"  # <-- Впиши сюди свій секретний ключ reCAPTCHA
+    secret_key = "6LejYZQrAAAAAK6HU9hHqHFsPWOFDEoLn1_nYqxW"  # встав сюди свій секретний ключ reCAPTCHA
     payload = {
         'secret': secret_key,
         'response': token
@@ -40,8 +39,6 @@ def verify_recaptcha(token):
 @app.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
-
-    # Перевірка reCAPTCHA
     token = data.get('recaptcha_token')
     if not token or not verify_recaptcha(token):
         return jsonify({'success': False, 'message': 'Капча не пройдена'}), 400
@@ -68,8 +65,6 @@ def register():
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
-
-    # Перевірка reCAPTCHA
     token = data.get('recaptcha_token')
     if not token or not verify_recaptcha(token):
         return jsonify({'success': False, 'message': 'Капча не пройдена'}), 400
@@ -88,7 +83,6 @@ def login():
     else:
         return jsonify({'success': False, 'message': 'Невірний логін або пароль'}), 401
 
-# Видача HTML-сторінок
 @app.route('/')
 def auth_page():
     return send_from_directory('.', 'auth.html')
@@ -101,3 +95,21 @@ def static_page(page):
 
 @app.route('/pages/<page>')
 def pages_dir(page):
+    return send_from_directory('pages', page)
+
+@app.route('/js/<file>')
+def js_dir(file):
+    return send_from_directory('js', file)
+
+@app.route('/styles/<file>')
+def css_dir(file):
+    return send_from_directory('styles', file)
+
+@app.route('/js/emoji.json')
+def emoji_json():
+    return send_from_directory('js', 'emoji.json')
+
+if __name__ == '__main__':
+    init_db()
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
