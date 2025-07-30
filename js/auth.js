@@ -162,11 +162,10 @@ registerForm.addEventListener("submit", async (e) => {
   const result = await res.json();
 
   if (result.success) {
-    alert("Успішна реєстрація! Тепер увійдіть.");
-    loginToggle.click();
-  } else {
-    alert(result.message);
-  }
+  window.location.href = "home.html";
+} else {
+  alert(result.message);
+}
 
   delete registerForm.dataset.recaptchaToken;
 });
