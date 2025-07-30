@@ -64,9 +64,26 @@ recoverToggle.addEventListener("click", () => {
   recoverForm.style.display = recoverForm.style.display === "flex" ? "none" : "flex";
 });
 
+// --- Invisible reCAPTCHA callbacks ---
+function onLoginSubmit(token) {
+  loginForm.dataset.recaptchaToken = token;
+  loginForm.requestSubmit();
+}
+
+function onRegisterSubmit(token) {
+  registerForm.dataset.recaptchaToken = token;
+  registerForm.requestSubmit();
+}
+
 // ✅ Обробка входу
 loginForm.addEventListener("submit", async (e) => {
   e.preventDefault();
+
+  const token = loginForm.dataset.recaptchaToken;
+  if (!token) {
+    grecaptcha.execute(); // Запускаємо invisible reCAPTCHA
+    return;
+  }
 
   const email = loginForm.querySelector("input[name='email']").value.trim();
   const password = loginForm.querySelector("input[name='password']").value;
@@ -84,7 +101,7 @@ loginForm.addEventListener("submit", async (e) => {
   const res = await fetch("/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username: email, password })
+    body: JSON.stringify({ username: email, password, recaptcha_token: token }),
   });
 
   const result = await res.json();
@@ -94,11 +111,19 @@ loginForm.addEventListener("submit", async (e) => {
   } else {
     alert(result.message);
   }
+
+  delete loginForm.dataset.recaptchaToken;
 });
 
 // ✅ Обробка реєстрації
 registerForm.addEventListener("submit", async (e) => {
   e.preventDefault();
+
+  const token = registerForm.dataset.recaptchaToken;
+  if (!token) {
+    grecaptcha.execute(); // Запускаємо invisible reCAPTCHA
+    return;
+  }
 
   const username = registerForm.querySelector("input[name='username']").value.trim();
   const email = registerForm.querySelector("input[name='email']").value.trim();
@@ -128,7 +153,7 @@ registerForm.addEventListener("submit", async (e) => {
   const res = await fetch("/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password })
+    body: JSON.stringify({ username, password, recaptcha_token: token }),
   });
 
   const result = await res.json();
@@ -139,4 +164,6 @@ registerForm.addEventListener("submit", async (e) => {
   } else {
     alert(result.message);
   }
+
+  delete registerForm.dataset.recaptchaToken;
 });
