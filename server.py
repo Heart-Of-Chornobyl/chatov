@@ -24,23 +24,6 @@ def get_db_connection():
         print(f"Помилка підключення до БД: {err}")
         return None
 
-def init_db():
-    conn = get_db_connection()
-    if conn is None:
-        print("Не вдалося підключитись до бази для ініціалізації.")
-        return
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            username VARCHAR(255) UNIQUE NOT NULL,
-            password VARCHAR(255) NOT NULL
-        )
-    ''')
-    conn.commit()
-    c.close()
-    conn.close()
-
 def hash_password(password):
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
@@ -95,14 +78,15 @@ def login():
     if not token or not verify_recaptcha(token):
         return jsonify({'success': False, 'message': 'Капча не пройдена'}), 400
 
-    username = data.get('username', '').strip()
+    username_or_email = data.get('username', '').strip()
     password = data.get('password', '').strip()
 
     conn = get_db_connection()
     if conn is None:
         return jsonify({'success': False, 'message': 'Помилка підключення до бази'}), 500
     c = conn.cursor()
-    c.execute('SELECT password FROM users WHERE username = %s', (username,))
+    # Шукаємо користувача по username або email
+    c.execute('SELECT password FROM users WHERE username = %s OR email = %s', (username_or_email, username_or_email))
     user = c.fetchone()
     c.close()
     conn.close()
@@ -139,6 +123,5 @@ def emoji_json():
     return send_from_directory('js', 'emoji.json')
 
 if __name__ == '__main__':
-    init_db()
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
