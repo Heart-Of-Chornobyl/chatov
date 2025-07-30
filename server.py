@@ -28,7 +28,7 @@ def hash_password(password):
 
 # Додана функція перевірки reCAPTCHA
 def verify_recaptcha(token):
-    secret_key = "ТВОЙ_SECRET_KEY"  # <-- Впиши сюди свій секретний ключ reCAPTCHA
+    secret_key = "6LejYZQrAAAAAK6HU9hHqHFsPWOFDEoLn1_nYqxW"  # <-- Впиши сюди свій секретний ключ reCAPTCHA
     payload = {
         'secret': secret_key,
         'response': token
