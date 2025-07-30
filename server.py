@@ -53,8 +53,11 @@ def register():
     email = data.get('email', '').strip()
     password = data.get('password', '').strip()
 
-    if not username or not email or not password:
+    if not username or not password:
         return jsonify({'success': False, 'message': 'Заповніть всі поля'}), 400
+
+    if email == '':
+        email = None
 
     conn = get_db_connection()
     if conn is None:
