@@ -1,4 +1,5 @@
 // Перемикання між формами
+const SITE_KEY = '6LejYZQrAAAAAF6KjC63ymhGuoU5lNRdpRt4Hkln';
 const loginToggle = document.getElementById("loginToggle");
 const registerToggle = document.getElementById("registerToggle");
 const loginForm = document.getElementById("loginForm");
