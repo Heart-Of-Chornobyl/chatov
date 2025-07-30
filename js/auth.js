@@ -68,7 +68,7 @@ recoverToggle.addEventListener("click", () => {
 loginForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  const email = loginForm.querySelector("input[name='email']").value;
+  const email = loginForm.querySelector("input[name='email']").value.trim();
   const password = loginForm.querySelector("input[name='password']").value;
 
   if (!email.includes("@")) {
@@ -100,8 +100,15 @@ loginForm.addEventListener("submit", async (e) => {
 registerForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  const email = registerForm.querySelector("input[name='email']").value;
+  const username = registerForm.querySelector("input[name='username']").value.trim();
+  const email = registerForm.querySelector("input[name='email']").value.trim();
   const password = registerForm.querySelector("input[name='password']").value;
+  const password2 = registerForm.querySelector("input[name='password2']").value;
+
+  if (!username) {
+    alert("Введіть логін");
+    return;
+  }
 
   if (!email.includes("@")) {
     alert("Некоректний email");
@@ -113,10 +120,15 @@ registerForm.addEventListener("submit", async (e) => {
     return;
   }
 
+  if (password !== password2) {
+    alert("Паролі не співпадають");
+    return;
+  }
+
   const res = await fetch("/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username: email, password })
+    body: JSON.stringify({ username, password })
   });
 
   const result = await res.json();
