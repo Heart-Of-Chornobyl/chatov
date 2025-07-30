@@ -86,12 +86,11 @@ loginForm.addEventListener("submit", async (e) => {
     return;
   }
 
-  const email = loginForm.querySelector("input[name='email']").value.trim();
+  const loginOrEmail = loginForm.querySelector("input[name='email']").value.trim();
   const password = loginForm.querySelector("input[name='password']").value;
 
-  // Перевіряємо email тільки якщо він не пустий
-  if (email !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    alert("Некоректний email");
+  if (!loginOrEmail) {
+    alert("Введіть логін або email");
     return;
   }
 
@@ -103,7 +102,7 @@ loginForm.addEventListener("submit", async (e) => {
   const res = await fetch("/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username: email, password, recaptcha_token: token }),
+    body: JSON.stringify({ username: loginOrEmail, password, recaptcha_token: token }),
   });
 
   const result = await res.json();
@@ -162,10 +161,10 @@ registerForm.addEventListener("submit", async (e) => {
   const result = await res.json();
 
   if (result.success) {
-  window.location.href = "home.html";
-} else {
-  alert(result.message);
-}
+    window.location.href = "home.html";
+  } else {
+    alert(result.message);
+  }
 
   delete registerForm.dataset.recaptchaToken;
 });
