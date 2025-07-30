@@ -27,7 +27,10 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def verify_recaptcha(token):
-    secret_key = "6LejYZQrAAAAAK6HU9hHqHFsPWOFDEoLn1_nYqxW"  # встав сюди свій секретний ключ reCAPTCHA
+    secret_key = os.environ.get('RECAPTCHA_SECRET_KEY')
+    if not secret_key:
+        # Якщо ключа нема — відмовляємо у проходженні капчі (безпека)
+        return False
     payload = {
         'secret': secret_key,
         'response': token
