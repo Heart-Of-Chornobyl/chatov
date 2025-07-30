@@ -89,7 +89,8 @@ loginForm.addEventListener("submit", async (e) => {
   const email = loginForm.querySelector("input[name='email']").value.trim();
   const password = loginForm.querySelector("input[name='password']").value;
 
-  if (!email.includes("@")) {
+  // Перевіряємо email тільки якщо він не пустий
+  if (email !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     alert("Некоректний email");
     return;
   }
@@ -136,7 +137,8 @@ registerForm.addEventListener("submit", async (e) => {
     return;
   }
 
-  if (!email.includes("@")) {
+  // Перевіряємо email тільки якщо він не пустий
+  if (email !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     alert("Некоректний email");
     return;
   }
