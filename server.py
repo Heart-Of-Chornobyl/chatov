@@ -3,13 +3,13 @@ from flask_cors import CORS
 import os
 import sqlite3
 import hashlib
+import requests  # <-- додано
 
 app = Flask(__name__)
 CORS(app)
 
 DB_FILE = 'users.db'
 
-# Створюємо базу користувачів
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -23,14 +23,29 @@ def init_db():
     conn.commit()
     conn.close()
 
-# Хешування пароля
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-# Реєстрація
+# Додана функція перевірки reCAPTCHA
+def verify_recaptcha(token):
+    secret_key = "ТВОЙ_SECRET_KEY"  # <-- Впиши сюди свій секретний ключ reCAPTCHA
+    payload = {
+        'secret': secret_key,
+        'response': token
+    }
+    r = requests.post('https://www.google.com/recaptcha/api/siteverify', data=payload)
+    result = r.json()
+    return result.get('success', False)
+
 @app.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
+
+    # Перевірка reCAPTCHA
+    token = data.get('recaptcha_token')
+    if not token or not verify_recaptcha(token):
+        return jsonify({'success': False, 'message': 'Капча не пройдена'}), 400
+
     username = data.get('username', '').strip()
     password = data.get('password', '').strip()
 
@@ -50,10 +65,15 @@ def register():
 
     return jsonify({'success': True, 'message': 'Реєстрація успішна'}), 200
 
-# Вхід
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
+
+    # Перевірка reCAPTCHA
+    token = data.get('recaptcha_token')
+    if not token or not verify_recaptcha(token):
+        return jsonify({'success': False, 'message': 'Капча не пройдена'}), 400
+
     username = data.get('username', '').strip()
     password = data.get('password', '').strip()
 
@@ -81,21 +101,3 @@ def static_page(page):
 
 @app.route('/pages/<page>')
 def pages_dir(page):
-    return send_from_directory('pages', page)
-
-@app.route('/js/<file>')
-def js_dir(file):
-    return send_from_directory('js', file)
-
-@app.route('/styles/<file>')
-def css_dir(file):
-    return send_from_directory('styles', file)
-
-@app.route('/js/emoji.json')
-def emoji_json():
-    return send_from_directory('js', 'emoji.json')
-
-if __name__ == '__main__':
-    init_db()
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
