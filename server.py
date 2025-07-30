@@ -1,40 +1,55 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import os
-import sqlite3
+import mysql.connector
 import requests
 import bcrypt
 
 app = Flask(__name__)
 CORS(app)
 
-DB_FILE = 'users.db'
+DB_CONFIG = {
+    'host': os.environ.get('DB_HOST'),
+    'port': int(os.environ.get('DB_PORT', 3306)),
+    'user': os.environ.get('DB_USER'),
+    'password': os.environ.get('DB_PASS'),
+    'database': os.environ.get('DB_NAME'),
+}
+
+def get_db_connection():
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        return conn
+    except mysql.connector.Error as err:
+        print(f"Помилка підключення до БД: {err}")
+        return None
 
 def init_db():
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
+    if conn is None:
+        print("Не вдалося підключитись до бази для ініціалізації.")
+        return
     c = conn.cursor()
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(255) UNIQUE NOT NULL,
+            password VARCHAR(255) NOT NULL
         )
     ''')
     conn.commit()
+    c.close()
     conn.close()
 
 def hash_password(password):
-    # Хешуємо пароль з bcrypt (повертаємо строку)
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 def check_password(password, hashed):
-    # Перевірка пароля з хешем
     return bcrypt.checkpw(password.encode(), hashed.encode())
 
 def verify_recaptcha(token):
     secret_key = os.environ.get('RECAPTCHA_SECRET_KEY')
     if not secret_key:
-        # Якщо ключ не встановлений — відмовляємо у проходженні капчі (безпека)
         return False
     payload = {
         'secret': secret_key,
@@ -57,15 +72,18 @@ def register():
     if not username or not password:
         return jsonify({'success': False, 'message': 'Заповніть всі поля'}), 400
 
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({'success': False, 'message': 'Помилка підключення до бази'}), 500
     c = conn.cursor()
     try:
-        c.execute('INSERT INTO users (username, password) VALUES (?, ?)',
+        c.execute('INSERT INTO users (username, password) VALUES (%s, %s)', 
                   (username, hash_password(password)))
         conn.commit()
-    except sqlite3.IntegrityError:
+    except mysql.connector.IntegrityError:
         return jsonify({'success': False, 'message': 'Користувач вже існує'}), 409
     finally:
+        c.close()
         conn.close()
 
     return jsonify({'success': True, 'message': 'Реєстрація успішна'}), 200
@@ -80,10 +98,13 @@ def login():
     username = data.get('username', '').strip()
     password = data.get('password', '').strip()
 
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({'success': False, 'message': 'Помилка підключення до бази'}), 500
     c = conn.cursor()
-    c.execute('SELECT password FROM users WHERE username = ?', (username,))
+    c.execute('SELECT password FROM users WHERE username = %s', (username,))
     user = c.fetchone()
+    c.close()
     conn.close()
 
     if user and check_password(password, user[0]):
