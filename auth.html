@@ -20,8 +20,8 @@
     </div>
 
     <form id="loginForm" class="form active">
-      <input type="text" placeholder="Логін або email" required />
-      <input type="password" placeholder="Пароль" required />
+      <input type="text" name="email" placeholder="Логін або email" required />
+      <input type="password" name="password" placeholder="Пароль" required />
       <button type="submit">Увійти</button>
       <p>Ще без акаунту? <span id="toRegister" style="text-decoration: underline; cursor: pointer;">Реєструйся</span> ☝</p>
       <p><span id="recoverToggle" style="text-decoration: underline; cursor: pointer;">Відновити доступ</span> 🔐</p>
@@ -32,10 +32,10 @@
     </form>
 
     <form id="registerForm" class="form">
-      <input type="text" placeholder="Логін" required />
-      <input type="email" placeholder="Email" required />
-      <input type="password" placeholder="Пароль" required />
-      <input type="password" placeholder="Повторити пароль" required />
+      <input type="text" name="username" placeholder="Логін" required />
+      <input type="email" name="email" placeholder="Email" required />
+      <input type="password" name="password" placeholder="Пароль" required />
+      <input type="password" name="password2" placeholder="Повторити пароль" required />
       <button type="submit">Зареєструватися</button>
       <p>Уже маєш акаунт? <span id="toLogin" style="text-decoration: underline; cursor: pointer;">Увійди</span> ☝</p>
     </form>
