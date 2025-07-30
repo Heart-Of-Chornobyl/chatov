@@ -50,21 +50,23 @@ def register():
         return jsonify({'success': False, 'message': 'Капча не пройдена'}), 400
 
     username = data.get('username', '').strip()
+    email = data.get('email', '').strip()
     password = data.get('password', '').strip()
 
-    if not username or not password:
+    if not username or not email or not password:
         return jsonify({'success': False, 'message': 'Заповніть всі поля'}), 400
 
     conn = get_db_connection()
     if conn is None:
         return jsonify({'success': False, 'message': 'Помилка підключення до бази'}), 500
+
     c = conn.cursor()
     try:
-        c.execute('INSERT INTO users (username, password) VALUES (%s, %s)', 
-                  (username, hash_password(password)))
+        c.execute('INSERT INTO users (username, email, password) VALUES (%s, %s, %s)',
+                  (username, email, hash_password(password)))
         conn.commit()
     except mysql.connector.IntegrityError:
-        return jsonify({'success': False, 'message': 'Користувач вже існує'}), 409
+        return jsonify({'success': False, 'message': 'Користувач з таким логіном або email вже існує'}), 409
     finally:
         c.close()
         conn.close()
@@ -84,9 +86,10 @@ def login():
     conn = get_db_connection()
     if conn is None:
         return jsonify({'success': False, 'message': 'Помилка підключення до бази'}), 500
+
     c = conn.cursor()
-    # Шукаємо користувача по username або email
-    c.execute('SELECT password FROM users WHERE username = %s OR email = %s', (username_or_email, username_or_email))
+    c.execute('SELECT password FROM users WHERE username = %s OR email = %s',
+              (username_or_email, username_or_email))
     user = c.fetchone()
     c.close()
     conn.close()
